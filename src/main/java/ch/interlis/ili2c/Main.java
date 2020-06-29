@@ -156,10 +156,10 @@ public class Main {
     
     TransformationParameter params = new TransformationParameter();
     
-	if (args.length == 0) {
-	    ch.interlis.ili2c.gui.Main.main(args);
-	    return;
-	}
+//	if (args.length == 0) {
+//	    ch.interlis.ili2c.gui.Main.main(args);
+//	    return;
+//	}
 
 	if (hasArg("-u", "--usage", args)) {
 	    printUsage(APP_NAME);
@@ -966,10 +966,10 @@ public class Main {
 	}
 
 
-    static public boolean editConfig(Configuration config) {
-	ch.interlis.ili2c.gui.Main dialog = new ch.interlis.ili2c.gui.Main();
-	return dialog.showDialog();
-    }
+//    static public boolean editConfig(Configuration config) {
+//	ch.interlis.ili2c.gui.Main dialog = new ch.interlis.ili2c.gui.Main();
+//	return dialog.showDialog();
+//    }
 
     @Deprecated
     public static String getVersion() {

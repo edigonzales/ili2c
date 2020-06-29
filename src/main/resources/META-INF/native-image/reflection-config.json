@@ -1,0 +1,32 @@
+[
+  {
+    "name" : "com.sun.xml.internal.stream.XMLOutputFactoryImpl",
+    "methods": [
+      { "name": "<init>", "parameterTypes": [] }
+    ]
+  },
+  {
+    "name" : "com.sun.xml.internal.stream.events.XMLEventFactoryImpl",
+    "methods": [
+      { "name": "<init>", "parameterTypes": [] }
+    ]
+  },
+  {
+    "name" : "com.sun.xml.internal.stream.XMLInputFactoryImpl",
+    "methods": [
+      { "name": "<init>", "parameterTypes": [] }
+    ]
+  },
+  {
+    "name" : "antlr.CommonToken",
+    "methods": [
+      { "name": "<init>", "parameterTypes": [] }
+    ]
+  },
+  {
+    "name" : "antlr.CommonHiddenStreamToken",
+    "methods": [
+      { "name": "<init>", "parameterTypes": [] }
+    ]
+  }   
+]
