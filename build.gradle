@@ -24,7 +24,8 @@ allprojects {
 	}
 }
 
-version '5.1.2'+System.getProperty('release','-SNAPSHOT')
+//version '5.1.2'+System.getProperty('release','-SNAPSHOT')
+version '0.0.1'+System.getProperty('release','-SNAPSHOT')
 
 configurations {
 	scpAntTask
