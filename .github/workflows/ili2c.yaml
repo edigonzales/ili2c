@@ -1,8 +1,8 @@
 name: ili2c
 on:
   push:
-    tags:
-      - "v*"
+    # tags:
+    #   - "v*"
     branches:
       - 'master'
 jobs:
