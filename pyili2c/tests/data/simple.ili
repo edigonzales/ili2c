@@ -1,0 +1,19 @@
+INTERLIS 2.4;
+MODEL SimpleModel AT "https://agi.so.ch" VERSION "1.0" =
+  DOMAIN Identifier = TEXT;
+  FUNCTION NameLength(input : TEXT): NUMERIC;
+  STRUCTURE Address =
+    Street: TEXT;
+  END Address;
+
+  CLASS Road (ABSTRACT) =
+    Name: TEXT;
+    MANDATORY CONSTRAINT NameLength(Name) > 5;
+  END Road;
+
+  TOPIC SimpleTopic =
+    CLASS Building =
+      AddressRef: LIST {0..*} OF SimpleModel.Address;
+    END Building;
+  END SimpleTopic;
+END SimpleModel.
