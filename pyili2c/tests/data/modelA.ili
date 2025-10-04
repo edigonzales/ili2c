@@ -1,0 +1,12 @@
+INTERLIS 2.4;
+
+MODEL ModelA (de)
+  AT "https://example.com"
+  VERSION "2025-09-17"
+  =
+
+  STRUCTURE StructA =
+    attr1 : TEXT;
+  END StructA;
+
+END ModelA.

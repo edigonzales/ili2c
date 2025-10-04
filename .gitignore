@@ -115,4 +115,7 @@ $RECYCLE.BIN/
 .gradle
 build
 /user.properties
+
+# Python
 __pycache__/
+*.pyc
