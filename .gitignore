@@ -115,3 +115,4 @@ $RECYCLE.BIN/
 .gradle
 build
 /user.properties
+__pycache__/
