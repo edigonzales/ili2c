@@ -31,3 +31,55 @@ To build a binary distribution, use
 ~~~
 ant bindist
 ~~~
+
+## Python utilities
+
+Python ports of the ili2c metamodel, parser, and repository helpers now live in
+the [`python/`](python/) directory. The layout groups the source code and its
+pytest suite side by side:
+
+```
+python/
+├── ilirepository/
+├── pyili2c/
+└── tests/
+```
+
+### Working with uv
+
+[uv](https://docs.astral.sh/uv/) offers a convenient workflow for the Python
+codebase. The following commands assume you are in the repository root:
+
+1. Create a virtual environment (stored in `.venv/`):
+
+   ```bash
+   uv venv
+   ```
+
+2. Activate the environment (Linux/macOS):
+
+   ```bash
+   source .venv/bin/activate
+   ```
+
+   On Windows PowerShell use:
+
+   ```powershell
+   .\.venv\Scripts\Activate.ps1
+   ```
+
+3. Install the Python packages (including optional test dependencies):
+
+   ```bash
+   uv pip install -e python[test]
+   ```
+
+4. Run the test suite:
+
+   ```bash
+   uv run pytest
+   ```
+
+   `uv run` automatically picks up the `python/pyproject.toml` file and executes
+   `pytest` with the configured settings. To run only the repository tests you
+   can use `uv run pytest python/tests/test_repository_manager.py`.
