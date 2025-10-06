@@ -61,6 +61,12 @@ codebase. The following commands assume you are in the repository root:
    uv venv
    ```
 
+   `uv pip` commands require an existing environment; running `uv venv`
+   once bootstraps it. If you prefer not to manage activation manually,
+   you can skip the next step and run commands through `uv run`, which will
+   auto-activate the environment (for example,
+   `uv run python -m pytest python/tests`).
+
 2. Activate the environment (Linux/macOS):
 
    ```bash

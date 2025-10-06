@@ -26,6 +26,11 @@ The commands below assume you are working from this `python/` directory.
    uv venv
    ```
 
+   This step is required before running `uv pip`—the command does not
+   create the environment automatically. As an alternative to manual
+   activation, you can use `uv run ...` to execute commands inside the
+   managed environment on demand.
+
 2. Activate it (Linux/macOS):
 
    ```bash
