@@ -45,6 +45,11 @@ python/
 └── tests/
 ```
 
+The parser implementation relies on the upstream
+[`antlr4-python3-runtime`](https://pypi.org/project/antlr4-python3-runtime/)
+package. It is declared in `python/pyproject.toml` and installed automatically
+when you install the project, so no vendored copy is required.
+
 ### Working with uv
 
 [uv](https://docs.astral.sh/uv/) offers a convenient workflow for the Python
@@ -77,9 +82,9 @@ codebase. The following commands assume you are in the repository root:
 4. Run the test suite:
 
    ```bash
-   uv run pytest
+   python -m pytest python/tests
    ```
 
-   `uv run` automatically picks up the `python/pyproject.toml` file and executes
-   `pytest` with the configured settings. To run only the repository tests you
-   can use `uv run pytest python/tests/test_repository_manager.py`.
+   The tests default to the `python/` subproject thanks to its `pyproject.toml`.
+   To run only the repository tests you can execute
+   `python -m pytest python/tests/test_repository_manager.py`.
