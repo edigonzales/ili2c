@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from ilirepository import IliRepositoryManager
-from ilirepository.cache import RepositoryCache
+from ili2c.ilirepository import IliRepositoryManager
+from ili2c.ilirepository.cache import RepositoryCache
 
 REPOSITORY_URL = "https://models.interlis.ch/"
 

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pyili2c.metamodel import (
+from ili2c.pyili2c.metamodel import (
     AssociationDef,
     Constraint,
     Domain,
@@ -10,7 +10,7 @@ from pyili2c.metamodel import (
     Table,
     Type,
 )
-from pyili2c.parser import parse
+from ili2c.pyili2c.parser import parse
 
 
 def test_parse_simple_model():

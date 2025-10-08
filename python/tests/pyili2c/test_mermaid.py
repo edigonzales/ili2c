@@ -4,11 +4,21 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pyili2c import AttributeDef, Cardinality, Constraint, Domain, Model, Table, Topic, TransferDescription
-from pyili2c import AssociationDef, RoleDef
-from pyili2c.metamodel.types import EnumerationType, TextType
-from pyili2c.mermaid import render
-from pyili2c.parser import parse
+from ili2c.pyili2c import (
+    AssociationDef,
+    AttributeDef,
+    Cardinality,
+    Constraint,
+    Domain,
+    Model,
+    RoleDef,
+    Table,
+    Topic,
+    TransferDescription,
+)
+from ili2c.pyili2c.metamodel.types import EnumerationType, TextType
+from ili2c.pyili2c.mermaid import render
+from ili2c.pyili2c.parser import parse
 
 
 def build_sample_transfer_description() -> TransferDescription:
