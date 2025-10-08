@@ -94,7 +94,7 @@ paramList: param (COMMA param)*;
 
 param: ID COLON typeRef;
 
-attrDef: ID cardinality? COLON mandatoryAttr? typeRef SEMICOLON;
+attrDef: ID cardinality? COLON mandatoryAttr? (enumerationType | typeRef) SEMICOLON;
 
 mandatoryAttr: MANDATORY;
 
