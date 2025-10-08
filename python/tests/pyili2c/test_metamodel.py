@@ -1,4 +1,4 @@
-from pyili2c.metamodel import (
+from ili2c.pyili2c.metamodel import (
     AttributeDef,
     Cardinality,
     EnumerationType,

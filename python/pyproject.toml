@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ili2c-python"
 version = "0.1.0"
-description = "Python utilities for ili2c (metamodel, parser, and repository helpers)."
+description = "Python utilities for ili2c (INTERLIS metamodel, parser, and repository helpers)."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -17,8 +17,9 @@ test = [
     "pytest>=8.0",
 ]
 
-[tool.setuptools]
-packages = ["ilirepository", "pyili2c"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ili2c*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

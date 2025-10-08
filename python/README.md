@@ -1,53 +1,85 @@
-# ili2c Python Utilities
+# ili2c Python module
 
-This directory contains the Python ports of selected ili2c functionality:
+`ili2c-python` packages the Python helpers that accompany the [ili2c](https://github.com/claeis/ili2c)
+toolchain.  It exposes a single import namespace, `ili2c`, which groups
+utilities for working with INTERLIS repositories, the metamodel, and the
+parser.
 
-- `pyili2c` – a lightweight INTERLIS metamodel and parser.
-- `ilirepository` – helpers for interacting with INTERLIS model repositories.
-- `tests` – pytest-based regression tests that exercise both packages.
+## Features
 
-The project is managed with a standalone `pyproject.toml`, allowing the code to be
-installed with modern tools such as [uv](https://docs.astral.sh/uv/) or `pip`.
+- `ili2c.ilirepository` – download and cache models from INTERLIS repositories.
+- `ili2c.pyili2c.metamodel` – a lightweight Python view of the INTERLIS metamodel.
+- `ili2c.pyili2c.parser` – parse INTERLIS 2 transfer descriptions.
+- `ili2c.pyili2c.mermaid` – render INTERLIS structures to Mermaid diagrams.
 
-## Dependencies
+## Installation
 
-The parser depends on the upstream
-[`antlr4-python3-runtime`](https://pypi.org/project/antlr4-python3-runtime/)
-package. It is declared in `pyproject.toml` and installed automatically when
-you install the project, so no vendored copy is required.
+```bash
+pip install ili2c-python
+```
 
-## Quick start with uv
+You can also install directly from a clone of this repository:
 
-The commands below assume you are working from this `python/` directory.
+```bash
+pip install .
+```
 
-1. Create a virtual environment:
+When developing locally, install the optional `test` extra to run the pytest suite:
 
-   ```bash
-   uv venv
-   ```
+```bash
+pip install .[test]
+```
 
-   This step is required before running `uv pip`—the command does not
-   create the environment automatically. As an alternative to manual
-   activation, you can use `uv run ...` to execute commands inside the
-   managed environment on demand.
+## Quick start
 
-2. Activate it (Linux/macOS):
+### Discover models in an INTERLIS repository
 
-   ```bash
-   source .venv/bin/activate
-   ```
+```python
+from ili2c.ilirepository import IliRepositoryManager
 
-3. Install the project with its optional test dependencies:
+manager = IliRepositoryManager(repositories=["https://models.interlis.ch/"])
+model = manager.find_model("RoadsExgm2ien", schema_language="ili2_4")
+print(model.name, model.version)
+for dependency in model.dependencies:
+    print("requires", dependency)
+```
 
-   ```bash
-   uv pip install -e .[test]
-   ```
+### Download a model file
 
-4. Run the tests:
+```python
+from pathlib import Path
+from ili2c.ilirepository import IliRepositoryManager
 
-   ```bash
-   python -m pytest
-   ```
+manager = IliRepositoryManager(repositories=["https://models.interlis.ch/"])
+path = Path(manager.get_model_file("DM01AVCH24LV95D", schema_language="ili2_4"))
+print(path.read_text()[:200])
+```
 
-The `pyproject.toml` configures pytest to look inside `tests/`. From elsewhere
-in the repository, you can run `python -m pytest python/tests`.
+### Parse a transfer description
+
+```python
+from ili2c.pyili2c.parser import parse
+from ili2c.pyili2c.mermaid import render
+
+with open("path/to/model.ili", "r", encoding="utf8") as fh:
+    transfer_description = parse(fh.read())
+
+print(f"Parsed {len(transfer_description.models)} models")
+print(render(transfer_description))
+```
+
+## Repository layout
+
+```
+python/
+├── ili2c/                # Python module published to PyPI
+│   ├── ilirepository/    # Repository client utilities
+│   └── pyili2c/          # Metamodel, parser, and visualisation helpers
+├── tests/                # Pytest suite for the module
+├── pyproject.toml        # PEP 621 metadata and build configuration
+├── setup.cfg             # Legacy setuptools configuration
+└── setup.py              # Compatibility entry point for build backends
+```
+
+Additional developer documentation is available in
+[`DEVELOPMENT.md`](DEVELOPMENT.md).
