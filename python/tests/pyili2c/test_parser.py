@@ -126,6 +126,24 @@ def test_parse_complex_model():
     )
 
 
+def test_parse_model_with_inline_enumeration():
+    path = Path(__file__).parent / "data" / "SO_ARP_SEin_Konfiguration_20250115_v23.ili"
+    td = parse(path)
+
+    model = td.find_model("SO_ARP_SEin_Konfiguration_20250115")
+    assert model is not None
+
+    gemeinde = next(c for c in model.elements_of_type(Table) if c.getName() == "Gemeinde")
+    attr = next(a for a in gemeinde.getAttributes() if a.getName() == "Handlungsraum")
+    domain = attr.getDomain()
+    assert isinstance(domain, EnumerationType)
+    assert domain.getLiterals() == [
+        "urban",
+        "laendlich",
+        "agglomerationsgepraegt",
+    ]
+
+
 def test_parse_model_with_imports():
     data_dir = Path(__file__).parent / "data"
     td = parse(data_dir / "modelB.ili")

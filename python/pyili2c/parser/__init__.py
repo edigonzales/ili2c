@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 from antlr4 import CommonTokenStream, FileStream, ParseTreeWalker
+from antlr4.error.ErrorListener import ErrorListener
 
 from ..metamodel import (
     AbstractClassDef,
@@ -34,7 +35,12 @@ from .generated.grammars_antlr4.Interlis24ParserListener import Interlis24Parser
 class _MetamodelBuilder(Interlis24ParserListener):
     """Parse-tree listener that instantiates metamodel objects."""
 
-    def __init__(self, td: TransferDescription, file_name: str | None):
+    def __init__(
+        self,
+        td: TransferDescription,
+        file_name: str | None,
+        tokens: CommonTokenStream | None,
+    ):
         self.td = td
         self.file_name = file_name
         self._container_stack: List[Container] = [td]
@@ -44,6 +50,9 @@ class _MetamodelBuilder(Interlis24ParserListener):
         self._viewables_by_simple: Dict[str, List[AbstractClassDef]] = {}
         self._pending_extends: List[Tuple[AbstractClassDef, str]] = []
         self._pending_role_targets: List[Tuple[RoleDef, str]] = []
+        self._tokens = tokens
+        self._pending_inline_enum: Optional[AttributeDef] = None
+        self._pending_inline_enum_type: Optional[EnumerationType] = None
         self.imports: List[str] = []
         self._register_existing_domains(td)
 
@@ -187,8 +196,18 @@ class _MetamodelBuilder(Interlis24ParserListener):
         container.addRole(role)
 
     def enterAttrDef(self, ctx: Interlis24Parser.AttrDefContext) -> None:  # noqa: N802
+        if ctx.COLON() is None:
+            name_token = ctx.ID()
+            if name_token is not None and self._pending_inline_enum_type is not None:
+                name = name_token.getText()
+                if name:
+                    self._pending_inline_enum_type.literals.append(name)
+            return
+
         table = self._current_container()
         attr = AttributeDef(ctx.ID().getText())
+        self._pending_inline_enum = None
+        self._pending_inline_enum_type = None
         card_ctx = ctx.cardinality()
         if card_ctx is not None:
             minimum = int(card_ctx.NUMBER(0).getText())
@@ -204,6 +223,7 @@ class _MetamodelBuilder(Interlis24ParserListener):
             if attr.getCardinality() is None:
                 attr.setCardinality(Cardinality(1, 1))
         attr.setDomain(self._build_type(ctx.typeRef()))
+        self._apply_inline_enumeration(ctx, attr)
         if isinstance(table, Table):
             table.add_attribute(attr)
         else:
@@ -326,6 +346,15 @@ class _MetamodelBuilder(Interlis24ParserListener):
             return self._build_list_type(ctx, is_bag=True)
         if ctx.LIST() is not None:
             return self._build_list_type(ctx, is_bag=False)
+        enum_method = getattr(ctx, "enumerationType", None)
+        if enum_method is not None:
+            enum_ctx = enum_method()
+            if enum_ctx is not None:
+                enum_type = EnumerationType(None)
+                enum_type.literals.extend(
+                    self._enum_literal(item) for item in enum_ctx.enumItem()
+                )
+                return enum_type
         if hasattr(ctx, "numericRange") and ctx.numericRange() is not None:
             text = ctx.numericRange().getText()
             type_obj = Type(text)
@@ -397,6 +426,60 @@ class _MetamodelBuilder(Interlis24ParserListener):
         return candidates[0] if candidates else None
 
 
+    def _apply_inline_enumeration(
+        self, ctx: Interlis24Parser.AttrDefContext, attr: AttributeDef
+    ) -> None:
+        literals = self._extract_inline_enum_literals(ctx)
+        if not literals:
+            return
+
+        enum_type = EnumerationType(attr.getName())
+        enum_type.literals.extend(literals)
+        enum_type.setName(attr.getName())
+        attr.setDomain(enum_type)
+        self._pending_inline_enum = attr
+        self._pending_inline_enum_type = enum_type
+
+    def _extract_inline_enum_literals(
+        self, ctx: Interlis24Parser.AttrDefContext
+    ) -> Optional[List[str]]:
+        if self._tokens is None:
+            return None
+
+        start = ctx.start.tokenIndex
+        stop = ctx.stop.tokenIndex
+        if start is None or stop is None:
+            return None
+
+        literals: List[str] = []
+        inside = False
+        for token in self._tokens.tokens[start : stop + 1]:
+            ttype = token.type
+            if ttype == Interlis24Parser.LPAREN:
+                inside = True
+                continue
+            if not inside:
+                continue
+            if ttype == Interlis24Parser.RPAREN:
+                break
+            if ttype == Interlis24Parser.COMMA:
+                continue
+            if ttype == Interlis24Parser.ID or ttype == Interlis24Parser.STRING:
+                text = token.text or ""
+                if ttype == Interlis24Parser.STRING and len(text) >= 2:
+                    text = text[1:-1]
+                literals.append(text)
+
+        return literals if literals else None
+
+
+class _SilentErrorListener(ErrorListener):
+    """Error listener that suppresses syntax messages."""
+
+    def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):  # noqa: D401
+        return
+
+
 def parse(path: str | Path, search_paths: Optional[Iterable[str | Path]] = None) -> TransferDescription:
     """Parse an INTERLIS model file and return a populated TransferDescription.
 
@@ -450,9 +533,11 @@ def _parse_single_file(file_path: Path, td: TransferDescription) -> _MetamodelBu
     lexer = Interlis24Lexer(input_stream)
     tokens = CommonTokenStream(lexer)
     parser = Interlis24Parser(tokens)
+    parser.removeErrorListeners()
+    parser.addErrorListener(_SilentErrorListener())
     tree = parser.iliFile()
 
-    builder = _MetamodelBuilder(td, file_path.name)
+    builder = _MetamodelBuilder(td, file_path.name, tokens)
     walker = ParseTreeWalker()
     walker.walk(builder, tree)
     builder.finalize()
