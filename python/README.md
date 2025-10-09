@@ -81,7 +81,20 @@ for model in transfer_description.getModels():
         for cls in topic.getClasses():
             attribute_names = [attr.getName() for attr in cls.getAttributes()]
             print("    Class", cls.getName(), "attributes:", ", ".join(attribute_names))
+
 ```
+
+### Understanding `Model` helpers
+
+The Python metamodel mirrors the structure of the Java implementation quite
+closely.  `Model` inherits from the generic container base class and therefore
+exposes helper methods only where they are broadly useful—such as `getTopics`,
+which is simply a convenience wrapper.  Model-level classes (for example,
+tables or structures declared outside a topic) are still attached directly to
+the model container and can be retrieved through
+`model.elements_of_type(Table)` or any other `elements_of_type(...)` query.
+Because the generic API already covers this access pattern, there is no
+dedicated `Model.getClasses()` helper.
 
 ## Repository layout
 
