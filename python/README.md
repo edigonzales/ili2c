@@ -68,6 +68,21 @@ print(f"Parsed {len(transfer_description.models)} models")
 print(render(transfer_description))
 ```
 
+Once parsed you can iterate through the INTERLIS structure using the
+metamodel helpers.  The example below prints every model, topic and class
+found in the transfer description, along with the attribute names defined on
+each class:
+
+```python
+for model in transfer_description.getModels():
+    print("Model", model.getName())
+    for topic in model.getTopics():
+        print("  Topic", topic.getName())
+        for cls in topic.getClasses():
+            attribute_names = [attr.getName() for attr in cls.getAttributes()]
+            print("    Class", cls.getName(), "attributes:", ", ".join(attribute_names))
+```
+
 ## Repository layout
 
 ```
