@@ -45,23 +45,22 @@ class IliRepositoryManager:
     def find_model(
         self, name: str, schema_language: Optional[str] = None
     ) -> Optional[ModelMetadata]:
+        if schema_language is not None:
+            return self._find_with_schema(name, schema_language)
+
         candidates = []
         for repository in self._iter_repositories():
             for metadata in self.access.get_models(repository):
                 if metadata.name != name:
                     continue
-                if schema_language and metadata.schema_language != schema_language:
-                    continue
                 candidates.append(metadata)
         if not candidates:
             return None
-        if schema_language is None:
-            grouped = defaultdict(list)
-            for metadata in candidates:
-                grouped[metadata.schema_language].append(metadata)
-            best_per_schema = [self._pick_preferred(group) for group in grouped.values()]
-            return self._pick_preferred(best_per_schema)
-        return self._pick_preferred(candidates)
+        grouped = defaultdict(list)
+        for metadata in candidates:
+            grouped[metadata.schema_language].append(metadata)
+        best_per_schema = [self._pick_preferred(group) for group in grouped.values()]
+        return self._pick_preferred(best_per_schema)
 
     def get_model_file(
         self, name: str, schema_language: Optional[str] = None
@@ -99,6 +98,18 @@ class IliRepositoryManager:
             )
 
         return sorted(models, key=key)[-1]
+
+    def _find_with_schema(self, name: str, schema_language: str) -> Optional[ModelMetadata]:
+        for repository in self._iter_repositories():
+            matches = [
+                metadata
+                for metadata in self.access.get_models(repository)
+                if metadata.name == name and metadata.schema_language == schema_language
+            ]
+            if not matches:
+                continue
+            return self._pick_preferred(matches)
+        return None
 
 
 def _parse_date(value: Optional[str]) -> Optional[datetime]:

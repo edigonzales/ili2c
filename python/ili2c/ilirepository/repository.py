@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 from urllib.parse import urlparse
 
-from .cache import RepositoryCache
+from .cache import FetchError, RepositoryCache
 from .models import ModelMetadata, _normalise_repository_uri
 
 logger = logging.getLogger(__name__)
@@ -45,8 +45,13 @@ class RepositoryAccess:
         if parsed.scheme in {"http", "https"}:
             try:
                 metadata = self._read_remote_models(repository_uri)
-            except Exception as exc:  # pragma: no cover - defensive logging
-                logger.warning("Failed to fetch ilimodels.xml from %s: %s", repository_uri, exc)
+            except FetchError as exc:  # pragma: no cover - defensive logging
+                logger.warning(
+                    "Failed to fetch ilimodels.xml from %s (url=%s): %s",
+                    repository_uri,
+                    exc.url,
+                    exc,
+                )
                 metadata = []
         else:
             metadata = self._read_directory_models(Path(repository_uri))
@@ -63,8 +68,13 @@ class RepositoryAccess:
         if parsed.scheme in {"http", "https"}:
             try:
                 path = self.cache.fetch(repository_uri, "ilisite.xml", self.meta_ttl)
-            except Exception as exc:  # pragma: no cover - defensive logging
-                logger.warning("Failed to fetch ilisite.xml from %s: %s", repository_uri, exc)
+            except FetchError as exc:  # pragma: no cover - defensive logging
+                logger.warning(
+                    "Failed to fetch ilisite.xml from %s (url=%s): %s",
+                    repository_uri,
+                    exc.url,
+                    exc,
+                )
                 path = None
         else:
             base = Path(repository_uri)
