@@ -51,7 +51,7 @@ from pathlib import Path
 from ili2c.ilirepository import IliRepositoryManager
 
 manager = IliRepositoryManager(repositories=["https://models.interlis.ch/"])
-path = Path(manager.get_model_file("DM01AVCH24LV95D", schema_language="ili2_4"))
+path = Path(manager.get_model_file("DMAV_Grundstuecke_V1_0", schema_language="ili2_4"))
 print(path.read_text()[:200])
 ```
 
