@@ -1,8 +1,8 @@
-INTERLIS 2.4;
+INTERLIS 2.3;
 
 MODEL GeometryCHLV95_V1 (en)
   AT "https://example.com"
-  VERSION "2024-01-01"
+  VERSION "2023-01-01"
   =
   DOMAIN MultiSurface = TEXT;
   DOMAIN MultiDirectedLine = TEXT;

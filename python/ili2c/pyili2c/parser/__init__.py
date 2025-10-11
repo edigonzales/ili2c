@@ -40,6 +40,30 @@ from .generated.grammars_antlr4.Interlis24ParserListener import Interlis24Parser
 logger = logging.getLogger(__name__)
 
 
+def _schema_language_preferences(version: Optional[str]) -> List[str]:
+    """Return repository schema language preferences for an INTERLIS version."""
+
+    if not version:
+        return []
+    parts = version.split(".")
+    if len(parts) != 2:
+        return []
+    major, minor = parts
+    try:
+        major_int = int(major)
+        minor_int = int(minor)
+    except ValueError:
+        return []
+
+    if major_int != 2:
+        return []
+    if minor_int == 4:
+        return ["ili2_4"]
+    if minor_int == 3:
+        return ["ili2_3"]
+    return []
+
+
 @dataclass
 class ParserSettings:
     """Configuration container influencing how models are resolved."""
@@ -87,6 +111,10 @@ class _MetamodelBuilder(Interlis24ParserListener):
         self._pending_inline_enum: Optional[AttributeDef] = None
         self._pending_inline_enum_type: Optional[EnumerationType] = None
         self.imports: List[str] = []
+        self.import_relations: List[Tuple[Optional[str], str]] = []
+        self.schema_version: Optional[str] = None
+        self.schema_language: Optional[str] = None
+        self._schema_languages: List[str] = []
         self._register_existing_domains(td)
 
     # ------------------------------------------------------------------
@@ -106,6 +134,10 @@ class _MetamodelBuilder(Interlis24ParserListener):
             if isinstance(container, Model):
                 return container
         return None
+
+    @property
+    def schema_languages(self) -> List[str]:
+        return list(self._schema_languages)
 
     def _register_existing_domains(self, container: Container) -> None:
         for element in container.iterator():
@@ -134,10 +166,27 @@ class _MetamodelBuilder(Interlis24ParserListener):
     # ------------------------------------------------------------------
     # Listener callbacks
     # ------------------------------------------------------------------
+    def enterVersion(self, ctx: Interlis24Parser.VersionContext) -> None:  # noqa: N802
+        numbers = ctx.NUMBER()
+        if len(numbers) < 2:
+            return
+        try:
+            major = int(numbers[0].getText())
+            minor = int(numbers[1].getText())
+        except ValueError:
+            return
+        self.schema_version = f"{major}.{minor}"
+        self._schema_languages = _schema_language_preferences(self.schema_version)
+        self.schema_language = self._schema_languages[0] if self._schema_languages else None
+
     def enterModel(self, ctx: Interlis24Parser.ModelContext) -> None:  # noqa: N802
         name = ctx.ID(0).getText()
         model = Model(name)
         model.setFileName(self.file_name)
+        if self.schema_version is not None:
+            model.setSchemaVersion(self.schema_version)
+        if self.schema_language is not None:
+            model.setSchemaLanguage(self.schema_language)
         self.td.add_model(model)
         self._push(model)
 
@@ -178,10 +227,13 @@ class _MetamodelBuilder(Interlis24ParserListener):
         self._pop()
 
     def enterImportsStmt(self, ctx: Interlis24Parser.ImportsStmtContext) -> None:  # noqa: N802
+        current_model = self._current_model()
+        importer_name = current_model.getName() if current_model is not None else None
         for qname in ctx.qualifiedName():
             name = self._qualified_name(qname)
             if name:
                 self.imports.append(name)
+                self.import_relations.append((importer_name, name))
 
     def enterAssociationDef(self, ctx: Interlis24Parser.AssociationDefContext) -> None:  # noqa: N802
         association = AssociationDef(ctx.ID(0).getText())
@@ -532,6 +584,7 @@ def parse(path: str | Path, settings: Optional[ParserSettings] = None) -> Transf
 
     to_parse: List[Path] = [root_path]
     parsed_files: Set[Path] = set()
+    all_import_relations: List[Tuple[Optional[str], str]] = []
 
     while to_parse:
         current = to_parse.pop()
@@ -541,6 +594,8 @@ def parse(path: str | Path, settings: Optional[ParserSettings] = None) -> Transf
 
         builder = _parse_single_file(current, td)
         parsed_files.add(current)
+        schema_languages = builder.schema_languages
+        all_import_relations.extend(builder.import_relations)
 
         for import_name in builder.imports:
             model_name = import_name.split(".")[0]
@@ -553,6 +608,7 @@ def parse(path: str | Path, settings: Optional[ParserSettings] = None) -> Transf
                 current.parent,
                 search_dirs,
                 repository_manager,
+                schema_languages,
             )
             if import_path is None:
                 lookup_dirs = _format_directories([current.parent, *search_dirs])
@@ -575,7 +631,39 @@ def parse(path: str | Path, settings: Optional[ParserSettings] = None) -> Transf
         td.remove(model)
         td.add_model(model)
 
+    _validate_import_versions(td, all_import_relations)
+
     return td
+
+
+def _validate_import_versions(
+    td: TransferDescription, import_relations: Iterable[Tuple[Optional[str], str]]
+) -> None:
+    """Ensure imported models share the same INTERLIS schema version as their importers."""
+
+    for importer_name, import_name in import_relations:
+        if not importer_name:
+            continue
+        importer_model = td.find_model(importer_name)
+        if importer_model is None:
+            continue
+        importer_version = importer_model.getSchemaVersion()
+        if not importer_version:
+            continue
+        base_name = import_name.split(".")[0]
+        if not base_name:
+            continue
+        imported_model = td.find_model(base_name)
+        if imported_model is None:
+            continue
+        imported_version = imported_model.getSchemaVersion()
+        if not imported_version:
+            continue
+        if importer_version != imported_version:
+            raise ValueError(
+                "Model '%s' (INTERLIS %s) cannot import model '%s' (INTERLIS %s)."
+                % (importer_name, importer_version, base_name, imported_version)
+            )
 
 
 def _parse_single_file(file_path: Path, td: TransferDescription) -> _MetamodelBuilder:
@@ -599,6 +687,7 @@ def _resolve_import_path(
     current_dir: Path,
     search_dirs: Iterable[Path],
     repository_manager: Optional[IliRepositoryManager],
+    schema_languages: Sequence[str] | None,
 ) -> Optional[Path]:
     base_name = model_name.split(".")[0]
     if not base_name:
@@ -627,9 +716,22 @@ def _resolve_import_path(
         except FileNotFoundError:  # pragma: no cover - defensive
             continue
     if repository_manager is not None:
-        path_str = repository_manager.get_model_file(base_name)
-        if path_str:
-            return Path(path_str)
+        preferences = list(schema_languages or [])
+        if not preferences:
+            preferences = [None]
+        seen_langs: Set[Optional[str]] = set()
+        for language in preferences:
+            if language in seen_langs:
+                continue
+            seen_langs.add(language)
+            if language is None:
+                path_str = repository_manager.get_model_file(base_name)
+            else:
+                path_str = repository_manager.get_model_file(
+                    base_name, schema_language=language
+                )
+            if path_str:
+                return Path(path_str)
     return None
 
 

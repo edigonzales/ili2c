@@ -1,0 +1,6 @@
+INTERLIS 2.3;
+
+MODEL RepoVersions (en)
+  =
+  DOMAIN RepoText = TEXT*30;
+END RepoVersions.

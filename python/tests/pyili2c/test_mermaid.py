@@ -18,7 +18,7 @@ from ili2c.pyili2c import (
 )
 from ili2c.pyili2c.metamodel.types import EnumerationType, TextType
 from ili2c.pyili2c.mermaid import render
-from ili2c.pyili2c.parser import parse
+from ili2c.pyili2c.parser import ParserSettings, parse
 
 
 def build_sample_transfer_description() -> TransferDescription:
@@ -94,9 +94,19 @@ def test_render_mermaid_diagram() -> None:
     assert diagram == expected
 
 
-def test_render_real_world_model() -> None:
-    path = Path(__file__).parent / "data" / "SO_ARP_SEin_Konfiguration_20250115_v23.ili"
-    td = parse(path)
+def test_render_real_world_model(tmp_path) -> None:
+    data_dir = Path(__file__).parent / "data"
+    path = tmp_path / "SO_ARP_SEin_Konfiguration_20250115_v23.ili"
+    path.write_text((data_dir / "SO_ARP_SEin_Konfiguration_20250115_v23.ili").read_text(), encoding="utf8")
+    (tmp_path / "GeometryCHLV95_V1.ili").write_text(
+        (data_dir / "GeometryCHLV95_V1.ili").read_text(),
+        encoding="utf8",
+    )
+    (tmp_path / "Text.ili").write_text((data_dir / "Text.ili").read_text(), encoding="utf8")
+
+    settings = ParserSettings()
+    settings.set_ilidirs("%ILI_DIR")
+    td = parse(path, settings=settings)
     diagram = render(td)
 
     assert "Handlungsraum[0..1] : Handlungsraum" in diagram
