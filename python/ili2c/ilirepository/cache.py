@@ -9,8 +9,8 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional
-from urllib.parse import urljoin, urlparse
+from typing import Optional, Union
+from urllib.parse import ParseResult, urljoin, urlparse
 from urllib.request import urlopen
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ class RepositoryCache:
         ttl_seconds: Optional[float],
         md5: Optional[str],
     ) -> Optional[Path]:
-        base_string = self._cache_key(parsed_uri.geturl())
+        base_string = self._cache_key(parsed_uri)
         target_folder = self.base_dir / base_string
         target_path = target_folder
         if relative_path:
@@ -131,10 +131,29 @@ class RepositoryCache:
     # ------------------------------------------------------------------
     # Utility helpers
 
-    def _cache_key(self, value: str) -> str:
+    def _cache_key(self, value: Union[str, ParseResult]) -> Union[str, Path]:
+        if isinstance(value, ParseResult):
+            parsed = value
+        else:
+            parsed = urlparse(value)
+
+        url_for_hash = parsed.geturl()
         if self.hashed_filenames:
-            return hashlib.md5(value.encode("utf-8")).hexdigest()
-        return self._escape(value, include_path=False)
+            return hashlib.md5(url_for_hash.encode("utf-8")).hexdigest()
+
+        parts = []
+        if parsed.netloc:
+            parts.append(self._escape(parsed.netloc, include_path=False))
+
+        for part in parsed.path.split("/"):
+            if part in {"", ".", ".."}:
+                continue
+            parts.append(self._escape(part, include_path=True))
+
+        if not parts:
+            return Path(self._escape(url_for_hash, include_path=False))
+
+        return Path(*parts)
 
     def _sanitize_relative(self, relative_path: str) -> Path:
         parts = []
