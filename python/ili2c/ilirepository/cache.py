@@ -8,16 +8,40 @@ import os
 import shutil
 import tempfile
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Union
+from urllib.error import HTTPError, URLError
 from urllib.parse import ParseResult, urljoin, urlparse
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 logger = logging.getLogger(__name__)
 
 
 _INVALID_CHARS = set('<>:"\\|?*%&')
 _INVALID_CHARS_WITH_SLASH = _INVALID_CHARS | {"/"}
+_DEFAULT_HEADERS = {"User-Agent": "ili2c-python/1.0"}
+
+
+@dataclass
+class FetchError(RuntimeError):
+    """Error raised when downloading a remote resource fails."""
+
+    url: str
+    message: str
+    status: Optional[int] = None
+    reason: Optional[str] = None
+
+    def __post_init__(self) -> None:  # pragma: no cover - simple delegation
+        super().__init__(self.message)
+
+    def __str__(self) -> str:  # pragma: no cover - repr helper
+        details = self.message
+        if self.status is not None:
+            details = f"HTTP {self.status}: {details}"
+        if self.reason and self.reason not in details:
+            details = f"{details} ({self.reason})"
+        return details
 
 
 class RepositoryCache:
@@ -108,24 +132,53 @@ class RepositoryCache:
                 if not url.endswith("/"):
                     url += "/"
                 url = urljoin(url, "/".join(self._sanitize_relative(relative_path).parts))
+            request = Request(url, headers=_DEFAULT_HEADERS)
             try:
                 target_path.parent.mkdir(parents=True, exist_ok=True)
-                with urlopen(url, timeout=40) as response:
-                    if getattr(response, "status", 200) >= 400:
+                with urlopen(request, timeout=40) as response:
+                    status = getattr(response, "status", 200)
+                    if status >= 400:
                         if target_path.exists():
-                            logger.warning("Using cached copy for %%s because the server returned %%s", url, response.status)
+                            logger.warning(
+                                "Using cached copy for %s because the server returned %s",
+                                url,
+                                status,
+                            )
                             return target_path
-                        return None
+                        raise FetchError(url, f"server returned status {status}", status=status)
                     with tempfile.NamedTemporaryFile(delete=False, dir=target_path.parent) as tmp:
                         shutil.copyfileobj(response, tmp)
                     os.replace(tmp.name, target_path)
             except FileNotFoundError:
                 return None
+            except HTTPError as exc:
+                if target_path.exists():
+                    logger.warning(
+                        "Using cached copy for %s because fetching failed with HTTP %s",
+                        url,
+                        exc.code,
+                    )
+                    return target_path
+                raise FetchError(url, f"HTTP error {exc.code}", status=exc.code, reason=exc.reason) from exc
+            except URLError as exc:
+                reason = getattr(exc, "reason", str(exc))
+                if target_path.exists():
+                    logger.warning(
+                        "Using cached copy for %s because fetching failed: %s",
+                        url,
+                        reason,
+                    )
+                    return target_path
+                raise FetchError(url, "network error", reason=str(reason)) from exc
             except Exception as exc:  # pragma: no cover - defensive logging
                 if target_path.exists():
-                    logger.warning("Using cached copy for %%s because fetching failed: %%s", url, exc)
+                    logger.warning(
+                        "Using cached copy for %s because fetching failed: %s",
+                        url,
+                        exc,
+                    )
                     return target_path
-                raise
+                raise FetchError(url, "unexpected error", reason=str(exc)) from exc
         return target_path
 
     # ------------------------------------------------------------------

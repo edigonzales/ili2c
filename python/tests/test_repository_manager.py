@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from ili2c.ilirepository import IliRepositoryManager
+from ili2c.ilirepository.models import ModelMetadata, _normalise_repository_uri
 from ili2c.ilirepository.cache import RepositoryCache
 
 REPOSITORY_URL = "https://models.interlis.ch/"
@@ -67,3 +68,61 @@ def test_get_model_file_from_connected_repository(manager):
     path = manager.get_model_file("DMAV_Grundstuecke_V1_0", schema_language="ili2_4")
     assert path is not None
     assert Path(path).exists()
+
+
+def test_find_model_short_circuits_when_schema_is_known():
+    class DummyAccess:
+        def __init__(self):
+            self.calls = []
+            self._graph = {
+                _normalise_repository_uri("https://root.example/"): [
+                    "https://first.example/",
+                    "https://second.example/",
+                ],
+                _normalise_repository_uri("https://first.example/"): [],
+                _normalise_repository_uri("https://second.example/"): [],
+            }
+            self._models = {
+                _normalise_repository_uri("https://root.example/"): [],
+                _normalise_repository_uri("https://first.example/"): [
+                    ModelMetadata(
+                        name="Demo",
+                        schema_language="ili2_4",
+                        relative_path="Demo.ili",
+                        version="2024-01-01",
+                        repository_uri="https://first.example/",
+                    )
+                ],
+                _normalise_repository_uri("https://second.example/"): [
+                    ModelMetadata(
+                        name="Demo",
+                        schema_language="ili2_4",
+                        relative_path="Demo.ili",
+                        version="2024-01-02",
+                        repository_uri="https://second.example/",
+                    )
+                ],
+            }
+
+        def get_models(self, repository_uri):
+            uri = _normalise_repository_uri(repository_uri)
+            self.calls.append(uri)
+            return list(self._models.get(uri, []))
+
+        def get_connected_repositories(self, repository_uri):
+            uri = _normalise_repository_uri(repository_uri)
+            return list(self._graph.get(uri, []))
+
+    manager = IliRepositoryManager(repositories=["https://root.example/"])
+    dummy_access = DummyAccess()
+    manager.access = dummy_access
+
+    metadata = manager.find_model("Demo", schema_language="ili2_4")
+
+    assert metadata is not None
+    assert metadata.repository_uri == _normalise_repository_uri("https://first.example/")
+    # Ensure we stopped after visiting the first matching repository.
+    assert dummy_access.calls == [
+        _normalise_repository_uri("https://root.example/"),
+        _normalise_repository_uri("https://first.example/"),
+    ]
