@@ -11,7 +11,7 @@ from typing import Dict, Iterable, List, Optional
 from urllib.parse import urlparse
 
 from .cache import RepositoryCache
-from .models import ModelMetadata
+from .models import ModelMetadata, _normalise_repository_uri
 
 logger = logging.getLogger(__name__)
 
@@ -32,20 +32,55 @@ class RepositoryAccess:
         self.cache = cache or RepositoryCache()
         self.meta_ttl = meta_ttl
         self._model_cache: Dict[str, List[ModelMetadata]] = {}
+        self._site_cache: Dict[str, List[str]] = {}
 
     # ------------------------------------------------------------------
     # Metadata access
 
     def get_models(self, repository_uri: str) -> List[ModelMetadata]:
+        repository_uri = _normalise_repository_uri(repository_uri)
         if repository_uri in self._model_cache:
             return self._model_cache[repository_uri]
         parsed = urlparse(repository_uri)
         if parsed.scheme in {"http", "https"}:
-            metadata = self._read_remote_models(repository_uri)
+            try:
+                metadata = self._read_remote_models(repository_uri)
+            except Exception as exc:  # pragma: no cover - defensive logging
+                logger.warning("Failed to fetch ilimodels.xml from %s: %s", repository_uri, exc)
+                metadata = []
         else:
             metadata = self._read_directory_models(Path(repository_uri))
         self._model_cache[repository_uri] = metadata
         return metadata
+
+    def get_connected_repositories(self, repository_uri: str) -> List[str]:
+        repository_uri = _normalise_repository_uri(repository_uri)
+        if repository_uri in self._site_cache:
+            return self._site_cache[repository_uri]
+
+        parsed = urlparse(repository_uri)
+        locations: List[str] = []
+        if parsed.scheme in {"http", "https"}:
+            try:
+                path = self.cache.fetch(repository_uri, "ilisite.xml", self.meta_ttl)
+            except Exception as exc:  # pragma: no cover - defensive logging
+                logger.warning("Failed to fetch ilisite.xml from %s: %s", repository_uri, exc)
+                path = None
+        else:
+            base = Path(repository_uri)
+            if parsed.scheme == "file":
+                base = Path(parsed.path)
+            path = base / "ilisite.xml"
+            if not path.exists():
+                path = None
+        if path is not None:
+            try:
+                locations = _parse_repository_locations(path)
+            except ET.ParseError as exc:
+                logger.warning("Failed to parse ilisite.xml from %s: %s", repository_uri, exc)
+                locations = []
+        self._site_cache[repository_uri] = locations
+        return locations
 
     def _read_remote_models(self, repository_uri: str) -> List[ModelMetadata]:
         index_path = self.cache.fetch(repository_uri, "ilimodels.xml", self.meta_ttl)
@@ -165,6 +200,23 @@ def _parse_bool(value: Optional[str]) -> bool:
     if value is None:
         return False
     return value.strip().lower() in _BOOL_TRUE
+
+
+def _parse_repository_locations(path: Path) -> List[str]:
+    tree = ET.parse(path)
+    root = tree.getroot()
+    locations: List[str] = []
+    for element in root.iter():
+        if not element.tag.endswith("RepositoryLocation_"):
+            continue
+        value = element.findtext(_VALUE_TAG)
+        if not value:
+            continue
+        value = value.strip()
+        if not value:
+            continue
+        locations.append(_normalise_repository_uri(value))
+    return locations
 
 
 def _latest_versions(models: Iterable[ModelMetadata]) -> List[ModelMetadata]:
