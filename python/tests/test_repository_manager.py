@@ -55,3 +55,15 @@ def test_list_models_filters_by_name(manager):
     models = manager.list_models(name="AbstractSymbology")
     assert any(m.schema_language == "ili2_4" for m in models)
     assert all(m.name == "AbstractSymbology" for m in models)
+
+
+def test_find_model_across_connected_repositories(manager):
+    metadata = manager.find_model("DMAV_Grundstuecke_V1_0", schema_language="ili2_4")
+    assert metadata is not None
+    assert metadata.repository_uri.startswith("https://models.geo.admin.ch/")
+
+
+def test_get_model_file_from_connected_repository(manager):
+    path = manager.get_model_file("DMAV_Grundstuecke_V1_0", schema_language="ili2_4")
+    assert path is not None
+    assert Path(path).exists()

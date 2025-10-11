@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
+from collections import defaultdict, deque
 from datetime import datetime
-from typing import Iterable, List, Optional
+from typing import Iterable, Iterator, List, Optional, Set
 
 from .cache import RepositoryCache
-from .models import ModelMetadata
+from .models import ModelMetadata, _normalise_repository_uri
 from .repository import RepositoryAccess
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class IliRepositoryManager:
 
     def list_models(self, name: Optional[str] = None) -> List[ModelMetadata]:
         result: List[ModelMetadata] = []
-        for repository in self.repositories:
+        for repository in self._iter_repositories():
             metadata = self.access.get_models(repository)
             if name is None:
                 result.extend(metadata)
@@ -46,7 +46,7 @@ class IliRepositoryManager:
         self, name: str, schema_language: Optional[str] = None
     ) -> Optional[ModelMetadata]:
         candidates = []
-        for repository in self.repositories:
+        for repository in self._iter_repositories():
             for metadata in self.access.get_models(repository):
                 if metadata.name != name:
                     continue
@@ -73,6 +73,22 @@ class IliRepositoryManager:
         if path is None:
             return None
         return str(path)
+
+    def _iter_repositories(self) -> Iterator[str]:
+        visited: Set[str] = set()
+        queue: deque[str] = deque(
+            _normalise_repository_uri(uri) for uri in self.repositories if uri
+        )
+        while queue:
+            repository = queue.popleft()
+            if not repository or repository in visited:
+                continue
+            visited.add(repository)
+            for child in self.access.get_connected_repositories(repository):
+                child_norm = _normalise_repository_uri(child)
+                if child_norm and child_norm not in visited:
+                    queue.append(child_norm)
+            yield repository
 
     @staticmethod
     def _pick_preferred(models: Iterable[ModelMetadata]) -> ModelMetadata:
