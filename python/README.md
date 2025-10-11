@@ -55,6 +55,69 @@ path = Path(manager.get_model_file("DM01AVCH24LV95D", schema_language="ili2_4"))
 print(path.read_text()[:200])
 ```
 
+### How repository caching works
+
+The repository helpers mirror HTTP repositories onto the local file system via
+`RepositoryCache`.  The cache stores two kinds of artefacts:
+
+- `ilimodels.xml` index files for each configured repository.  Metadata requests
+  such as `IliRepositoryManager.find_model` ask `RepositoryAccess` to retrieve
+  the repository index.  `RepositoryAccess` resolves the index by calling
+  `RepositoryCache.fetch(repository_uri, "ilimodels.xml", meta_ttl)`, which
+  downloads the XML once and reuses the local copy until the metadata
+  time-to-live (default: 24 hours) expires.
+- Individual model files.  When `IliRepositoryManager.get_model_file` is
+  invoked, `RepositoryAccess.fetch_model_file` delegates to
+  `RepositoryCache.fetch(metadata.repository_uri, metadata.relative_path,
+  model_ttl, metadata.md5)`.  The cache saves the model under the repository
+  folder and honours the model TTL (default: seven days) and MD5 checksum when
+  deciding whether to re-download the file.
+
+`RepositoryCache` maps each repository URL to a dedicated directory inside the
+cache root (`$ILI_CACHE` or `~/.ilicache`).  For HTTP repositories it sanitises
+path components to create safe file names (or uses MD5 hashes when the
+`ILI_CACHE_FILENAME=MD5` environment variable is set).  When asked to fetch a
+resource it:
+
+1. Checks whether a cached file already exists.
+2. Validates the TTL and optional MD5 checksum.
+3. Downloads the remote file with `urllib.request.urlopen` if the cache entry is
+   missing, expired or fails the checksum.
+4. Returns the local `Path` to the cached file for subsequent consumers.
+
+The following sequence diagram illustrates `IliRepositoryManager.get_model_file`:
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Manager as IliRepositoryManager
+    participant Access as RepositoryAccess
+    participant Cache as RepositoryCache
+    participant Repo as INTERLIS Repository
+
+    User->>Manager: get_model_file(name)
+    Manager->>Manager: find_model(name)
+    Manager->>Access: get_models(repository)
+    Access->>Cache: fetch("ilimodels.xml", ttl=meta_ttl)
+    Cache-->>Access: Path to cached ilimodels.xml
+    Access-->>Manager: ModelMetadata
+    Manager->>Access: fetch_model_file(metadata, ttl=model_ttl)
+    Access->>Cache: fetch(metadata.relative_path, ttl=model_ttl, md5)
+    alt Cache miss or expired entry
+        Cache->>Repo: HTTP GET model file
+        Repo-->>Cache: .ili content
+        Cache-->>Access: Path to downloaded file
+    else Cached entry valid
+        Cache-->>Access: Path to cached file
+    end
+    Access-->>Manager: Path
+    Manager-->>User: Local path string
+```
+
+Only the requested model file is downloaded.  Imported models are listed in the
+`ModelMetadata.dependencies` collection and can be fetched on demand by calling
+`get_model_file` for each dependency.
+
 ### Parse a transfer description
 
 ```python
