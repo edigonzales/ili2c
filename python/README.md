@@ -66,6 +66,10 @@ The repository helpers mirror HTTP repositories onto the local file system via
   `RepositoryCache.fetch(repository_uri, "ilimodels.xml", meta_ttl)`, which
   downloads the XML once and reuses the local copy until the metadata
   time-to-live (default: 24 hours) expires.
+- `ilisite.xml` repository graph files.  The manager walks repositories in
+  breadth-first order and therefore calls `RepositoryAccess.get_connected_repositories`
+  for each site.  The helper downloads and caches the `ilisite.xml` file in the
+  same way as the model index.
 - Individual model files.  When `IliRepositoryManager.get_model_file` is
   invoked, `RepositoryAccess.fetch_model_file` delegates to
   `RepositoryCache.fetch(metadata.repository_uri, metadata.relative_path,
@@ -96,19 +100,35 @@ sequenceDiagram
     participant Repo as INTERLIS Repository
 
     User->>Manager: get_model_file(name)
-    Manager->>Manager: find_model(name)
-    Manager->>Access: get_models(repository)
-    Access->>Cache: fetch("ilimodels.xml", ttl=meta_ttl)
-    Cache-->>Access: Path to cached ilimodels.xml
-    Access-->>Manager: ModelMetadata
+    loop Repositories (breadth-first)
+        Manager->>Access: get_models(repository)
+        Access->>Cache: fetch("ilimodels.xml", ttl=meta_ttl)
+        alt Cache miss or expired entry
+            Cache->>Repo: HTTP GET ilimodels.xml
+            Repo-->>Cache: Repository index
+        else Cached entry valid
+            Note right of Cache: Reuse cached metadata
+        end
+        Cache-->>Access: Path to ilimodels.xml
+        Access-->>Manager: ModelMetadata*
+        Manager->>Access: get_connected_repositories(repository)
+        Access->>Cache: fetch("ilisite.xml", ttl=meta_ttl)
+        alt Cache miss or expired entry
+            Cache->>Repo: HTTP GET ilisite.xml
+            Repo-->>Cache: Repository graph
+        else Cached entry valid
+            Note right of Cache: Reuse cached graph
+        end
+        Cache-->>Access: Path to ilisite.xml
+        Access-->>Manager: Connected URIs
+    end
     Manager->>Access: fetch_model_file(metadata, ttl=model_ttl)
     Access->>Cache: fetch(metadata.relative_path, ttl=model_ttl, md5)
     alt Cache miss or expired entry
         Cache->>Repo: HTTP GET model file
         Repo-->>Cache: .ili content
-        Cache-->>Access: Path to downloaded file
     else Cached entry valid
-        Cache-->>Access: Path to cached file
+        Note right of Cache: Reuse cached model
     end
     Access-->>Manager: Path
     Manager-->>User: Local path string
@@ -116,7 +136,9 @@ sequenceDiagram
 
 Only the requested model file is downloaded.  Imported models are listed in the
 `ModelMetadata.dependencies` collection and can be fetched on demand by calling
-`get_model_file` for each dependency.
+`get_model_file` for each dependency.  Any repositories linked through
+`ilisite.xml` files are traversed in breadth-first order, and their metadata and
+repository graph documents are cached alongside downloaded models.
 
 ### Parse a transfer description
 
@@ -136,8 +158,14 @@ print(render(transfer_description))
 `parse` accepts a `ParserSettings` instance that controls how imported models
 are resolved.  The parser searches the current model directory by default and
 falls back to the standard repositories listed in the default ILIDIRS string,
-`"%ILI_DIR;https://models.interlis.ch"`.  To override the lookup paths you can
-adjust the ILIDIRS configuration before invoking the parser:
+`"%ILI_DIR;https://models.interlis.ch"`.  Imported models are first resolved next
+to the referencing model, then across any additional directories from `ILIDIRS`,
+and finally via `IliRepositoryManager`, which walks remote repositories in
+breadth-first order using their `ilisite.xml` links.  Downloaded metadata and
+model files are cached on the local file system, while models discovered through
+`%ILI_DIR` entries are read directly without being mirrored.  To override the
+lookup paths you can adjust the ILIDIRS configuration before invoking the
+parser:
 
 ```python
 from pathlib import Path

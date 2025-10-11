@@ -5,6 +5,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from urllib.parse import urlparse
 
 from antlr4 import CommonTokenStream, FileStream, ParseTreeWalker
 from antlr4.error.ErrorListener import ErrorListener
@@ -641,11 +642,21 @@ def _resolve_search_sources(
     seen_repos: Set[str] = set()
 
     def add_directory(candidate: Path) -> None:
-        resolved = candidate.resolve()
+        try:
+            resolved = candidate.resolve()
+        except OSError:  # pragma: no cover - defensive guard
+            resolved = candidate
         if resolved in seen_dirs:
             return
         seen_dirs.add(resolved)
         search_dirs.append(resolved)
+
+    def add_repository(uri: str) -> None:
+        normalized = uri.rstrip("/") + "/" if uri else uri
+        if normalized in seen_repos:
+            return
+        seen_repos.add(normalized)
+        repositories.append(normalized)
 
     add_directory(root_path.parent)
 
@@ -655,12 +666,18 @@ def _resolve_search_sources(
         if not entry:
             continue
         entry = entry.replace("%ILI_DIR", str(root_path.parent))
-        if entry.lower().startswith("http://") or entry.lower().startswith("https://"):
-            normalized = entry.rstrip("/") or entry
-            if normalized not in seen_repos:
-                repositories.append(normalized)
-                seen_repos.add(normalized)
+
+        parsed = urlparse(entry)
+        scheme = parsed.scheme.lower()
+        if scheme in {"http", "https"}:
+            add_repository(parsed.geturl())
             continue
+        if scheme == "file":
+            path = Path(parsed.path)
+            add_directory(path)
+            add_repository(parsed.geturl())
+            continue
+
         add_directory(Path(entry))
 
     return search_dirs, repositories
