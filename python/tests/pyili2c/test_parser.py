@@ -1,4 +1,5 @@
 import threading
+from contextlib import contextmanager
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -17,6 +18,28 @@ from ili2c.pyili2c.metamodel import (
 )
 from ili2c.pyili2c.parser import ParserSettings, parse
 from ili2c.ilirepository.cache import RepositoryCache
+
+
+DATA_DIR = Path(__file__).parent / "data"
+
+
+class _SilentHandler(SimpleHTTPRequestHandler):
+    def log_message(self, format, *args):  # noqa: A003 - match signature
+        return
+
+
+@contextmanager
+def _serve_directory(directory: Path):
+    handler = partial(_SilentHandler, directory=str(directory))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        host, port = server.server_address
+        yield f"http://{host}:{port}"
+    finally:
+        server.shutdown()
+        thread.join()
 
 
 def test_parse_simple_model():
@@ -174,37 +197,72 @@ def test_parse_model_with_imports():
 def http_repository(tmp_path_factory):
     repo_dir = tmp_path_factory.mktemp("ilirepo")
     (repo_dir / "RepoModel.ili").write_text(
-        (Path(__file__).parent / "data" / "RepoModel.ili").read_text(),
+        (DATA_DIR / "RepoModel.ili").read_text(),
         encoding="utf8",
     )
     (repo_dir / "ilimodels.xml").write_text(
         """<?xml version="1.0" encoding="UTF-8"?>
 <IliRepository09.RepositoryIndex xmlns="http://www.interlis.ch/INTERLIS2.3">
-  <ModelMetadata>
+  <IliRepository09.RepositoryIndex.ModelMetadata>
     <Name>RepoModel</Name>
     <SchemaLanguage>ili2_4</SchemaLanguage>
     <File>RepoModel.ili</File>
     <Version>2024-01-01</Version>
-  </ModelMetadata>
+  </IliRepository09.RepositoryIndex.ModelMetadata>
 </IliRepository09.RepositoryIndex>
 """,
         encoding="utf8",
     )
 
-    class SilentHandler(SimpleHTTPRequestHandler):
-        def log_message(self, format, *args):  # noqa: A003 - match signature
-            return
+    with _serve_directory(repo_dir) as base_url:
+        yield base_url
 
-    handler = partial(SilentHandler, directory=str(repo_dir))
-    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        host, port = server.server_address
-        yield f"http://{host}:{port}"
-    finally:
-        server.shutdown()
-        thread.join()
+
+@pytest.fixture
+def http_repository_graph(tmp_path_factory):
+    root_dir = tmp_path_factory.mktemp("ilirepo_graph")
+    primary = root_dir / "primary"
+    secondary = root_dir / "secondary"
+    primary.mkdir()
+    secondary.mkdir()
+
+    (secondary / "RepoLinkedModel.ili").write_text(
+        (DATA_DIR / "RepoLinkedModel.ili").read_text(),
+        encoding="utf8",
+    )
+    (secondary / "ilimodels.xml").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<IliRepository09.RepositoryIndex xmlns="http://www.interlis.ch/INTERLIS2.3">
+  <IliRepository09.RepositoryIndex.ModelMetadata>
+    <Name>RepoLinkedModel</Name>
+    <SchemaLanguage>ili2_4</SchemaLanguage>
+    <File>RepoLinkedModel.ili</File>
+    <Version>2024-03-01</Version>
+  </IliRepository09.RepositoryIndex.ModelMetadata>
+</IliRepository09.RepositoryIndex>
+""",
+        encoding="utf8",
+    )
+    (primary / "ilimodels.xml").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<IliRepository09.RepositoryIndex xmlns="http://www.interlis.ch/INTERLIS2.3"/>
+""",
+        encoding="utf8",
+    )
+
+    with _serve_directory(root_dir) as base_url:
+        secondary_url = f"{base_url}/secondary"
+        (primary / "ilisite.xml").write_text(
+            f"""<?xml version="1.0" encoding="UTF-8"?>
+<IliSite09.RepositoryIndex xmlns="http://www.interlis.ch/INTERLIS2.3">
+  <RepositoryLocation_>
+    <value>{secondary_url}</value>
+  </RepositoryLocation_>
+</IliSite09.RepositoryIndex>
+""",
+            encoding="utf8",
+        )
+        yield f"{base_url}/primary"
 
 
 def test_parse_import_from_repository(http_repository, tmp_path):
@@ -212,7 +270,8 @@ def test_parse_import_from_repository(http_repository, tmp_path):
     settings = ParserSettings(repository_cache=cache)
     settings.set_ilidirs(f"%ILI_DIR;{http_repository}")
 
-    path = Path(__file__).parent / "data" / "remote_main.ili"
+    path = tmp_path / "remote_main.ili"
+    path.write_text((DATA_DIR / "remote_main.ili").read_text(), encoding="utf8")
     td = parse(path, settings=settings)
 
     assert td.find_model("RemoteMain") is not None
@@ -220,6 +279,36 @@ def test_parse_import_from_repository(http_repository, tmp_path):
     assert repo_model is not None
     domain = next(d for d in repo_model.elements_of_type(Domain) if d.getName() == "MyText")
     assert domain.getType().getName() == "TEXT*20"
+
+    cache_dir = cache.base_dir
+    repo_cache = list(cache_dir.rglob("RepoModel.ili"))
+    assert repo_cache
+    assert not any(p.name == "remote_main.ili" for p in cache_dir.rglob("remote_main.ili"))
+    assert list(cache_dir.rglob("ilimodels.xml"))
+
+
+def test_parse_import_from_connected_repository(http_repository_graph, tmp_path):
+    cache = RepositoryCache(base_dir=tmp_path / "ilicache")
+    settings = ParserSettings(repository_cache=cache)
+    settings.set_ilidirs(f"%ILI_DIR;{http_repository_graph}")
+
+    path = tmp_path / "remote_bfs_main.ili"
+    path.write_text((DATA_DIR / "remote_bfs_main.ili").read_text(), encoding="utf8")
+    td = parse(path, settings=settings)
+
+    assert td.find_model("RemoteBFSMain") is not None
+    linked_model = td.find_model("RepoLinkedModel")
+    assert linked_model is not None
+    domain = next(
+        d for d in linked_model.elements_of_type(Domain) if d.getName() == "LinkedText"
+    )
+    assert domain.getType().getName() == "TEXT*10"
+
+    cache_dir = cache.base_dir
+    linked_cache = list(cache_dir.rglob("RepoLinkedModel.ili"))
+    assert linked_cache
+    assert all(p.is_file() for p in linked_cache)
+    assert list(cache_dir.rglob("ilisite.xml"))
 
 
 def test_parse_missing_import_raises(tmp_path):
