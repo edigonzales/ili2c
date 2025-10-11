@@ -11,6 +11,8 @@ from .element import Container
 class Model(Container):
     name: str = ""
     file_name: Optional[str] = None
+    schema_version: Optional[str] = None
+    schema_language: Optional[str] = None
 
     def __post_init__(self) -> None:
         self.setName(self.name)
@@ -20,6 +22,18 @@ class Model(Container):
 
     def setFileName(self, name: Optional[str]) -> None:
         self.file_name = name
+
+    def getSchemaVersion(self) -> Optional[str]:  # noqa: N802 - Java style
+        return self.schema_version
+
+    def setSchemaVersion(self, version: Optional[str]) -> None:
+        self.schema_version = version
+
+    def getSchemaLanguage(self) -> Optional[str]:  # noqa: N802 - Java style
+        return self.schema_language
+
+    def setSchemaLanguage(self, language: Optional[str]) -> None:
+        self.schema_language = language
 
     def add_topic(self, topic: "Topic") -> None:
         self.add(topic)

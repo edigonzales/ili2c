@@ -50,6 +50,8 @@ def test_parse_simple_model():
     assert [m.getName() for m in models] == ["SimpleModel"]
 
     model = models[0]
+    assert model.getSchemaVersion() == "2.4"
+    assert model.getSchemaLanguage() == "ili2_4"
     topics = model.getTopics()
     assert [t.getName() for t in topics] == ["SimpleTopic"]
 
@@ -161,6 +163,8 @@ def test_parse_model_with_inline_enumeration():
 
     model = td.find_model("SO_ARP_SEin_Konfiguration_20250115")
     assert model is not None
+    assert model.getSchemaVersion() == "2.3"
+    assert model.getSchemaLanguage() == "ili2_3"
 
     gemeinde = next(c for c in model.elements_of_type(Table) if c.getName() == "Gemeinde")
     attr = next(a for a in gemeinde.getAttributes() if a.getName() == "Handlungsraum")
@@ -265,6 +269,38 @@ def http_repository_graph(tmp_path_factory):
         yield f"{base_url}/primary"
 
 
+@pytest.fixture
+def http_repository_versions(tmp_path_factory):
+    repo_dir = tmp_path_factory.mktemp("ilirepo_versions")
+    for filename in ("RepoVersions_ili23.ili", "RepoVersions_ili24.ili"):
+        (repo_dir / filename).write_text(
+            (DATA_DIR / filename).read_text(),
+            encoding="utf8",
+        )
+    (repo_dir / "ilimodels.xml").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<IliRepository09.RepositoryIndex xmlns="http://www.interlis.ch/INTERLIS2.3">
+  <IliRepository09.RepositoryIndex.ModelMetadata>
+    <Name>RepoVersions</Name>
+    <SchemaLanguage>ili2_3</SchemaLanguage>
+    <File>RepoVersions_ili23.ili</File>
+    <Version>2023-01-01</Version>
+  </IliRepository09.RepositoryIndex.ModelMetadata>
+  <IliRepository09.RepositoryIndex.ModelMetadata>
+    <Name>RepoVersions</Name>
+    <SchemaLanguage>ili2_4</SchemaLanguage>
+    <File>RepoVersions_ili24.ili</File>
+    <Version>2024-01-01</Version>
+  </IliRepository09.RepositoryIndex.ModelMetadata>
+</IliRepository09.RepositoryIndex>
+""",
+        encoding="utf8",
+    )
+
+    with _serve_directory(repo_dir) as base_url:
+        yield base_url
+
+
 def test_parse_import_from_repository(http_repository, tmp_path):
     cache = RepositoryCache(base_dir=tmp_path / "ilicache")
     settings = ParserSettings(repository_cache=cache)
@@ -285,6 +321,18 @@ def test_parse_import_from_repository(http_repository, tmp_path):
     assert repo_cache
     assert not any(p.name == "remote_main.ili" for p in cache_dir.rglob("remote_main.ili"))
     assert list(cache_dir.rglob("ilimodels.xml"))
+
+
+def test_parse_import_from_repository_mismatched_version_errors(http_repository, tmp_path):
+    cache = RepositoryCache(base_dir=tmp_path / "ilicache_v23")
+    settings = ParserSettings(repository_cache=cache)
+    settings.set_ilidirs(f"%ILI_DIR;{http_repository}")
+
+    path = tmp_path / "remote_main_v23.ili"
+    path.write_text((DATA_DIR / "remote_main_v23.ili").read_text(), encoding="utf8")
+
+    with pytest.raises(FileNotFoundError, match="RepoModel"):
+        parse(path, settings=settings)
 
 
 def test_parse_import_from_connected_repository(http_repository_graph, tmp_path):
@@ -309,6 +357,51 @@ def test_parse_import_from_connected_repository(http_repository_graph, tmp_path)
     assert linked_cache
     assert all(p.is_file() for p in linked_cache)
     assert list(cache_dir.rglob("ilisite.xml"))
+
+
+def test_parse_import_prefers_matching_schema(http_repository_versions, tmp_path):
+    cache = RepositoryCache(base_dir=tmp_path / "ilicache_versions")
+    settings = ParserSettings(repository_cache=cache)
+    settings.set_ilidirs(f"%ILI_DIR;{http_repository_versions}")
+
+    path24 = tmp_path / "remote_version24.ili"
+    path24.write_text((DATA_DIR / "remote_version24.ili").read_text(), encoding="utf8")
+    td24 = parse(path24, settings=settings)
+
+    repo_model_24 = td24.find_model("RepoVersions")
+    assert repo_model_24 is not None
+    assert repo_model_24.getSchemaLanguage() == "ili2_4"
+    domain_24 = next(
+        d for d in repo_model_24.elements_of_type(Domain) if d.getName() == "RepoText"
+    )
+    assert domain_24.getType().getName() == "TEXT*40"
+
+    path23 = tmp_path / "remote_version23.ili"
+    path23.write_text((DATA_DIR / "remote_version23.ili").read_text(), encoding="utf8")
+    td23 = parse(path23, settings=settings)
+
+    repo_model_23 = td23.find_model("RepoVersions")
+    assert repo_model_23 is not None
+    assert repo_model_23.getSchemaLanguage() == "ili2_3"
+    domain_23 = next(
+        d for d in repo_model_23.elements_of_type(Domain) if d.getName() == "RepoText"
+    )
+    assert domain_23.getType().getName() == "TEXT*30"
+
+
+def test_parse_import_with_local_version_mismatch_raises(tmp_path):
+    path = tmp_path / "remote_main_v23.ili"
+    path.write_text((DATA_DIR / "remote_main_v23.ili").read_text(), encoding="utf8")
+    (tmp_path / "RepoModel.ili").write_text(
+        (DATA_DIR / "RepoModel.ili").read_text(),
+        encoding="utf8",
+    )
+
+    settings = ParserSettings()
+    settings.set_ilidirs("%ILI_DIR")
+
+    with pytest.raises(ValueError, match="RemoteMainLegacy"):  # importer name
+        parse(path, settings=settings)
 
 
 def test_parse_missing_import_raises(tmp_path):
