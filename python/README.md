@@ -58,20 +58,38 @@ print(path.read_text()[:200])
 ### Parse a transfer description
 
 ```python
-from ili2c.pyili2c.parser import parse
+from pathlib import Path
+
+from ili2c.pyili2c.parser import ParserSettings, parse
 from ili2c.pyili2c.mermaid import render
 
-with open("path/to/model.ili", "r", encoding="utf8") as fh:
-    transfer_description = parse(fh.read())
+model_path = Path("path/to/model.ili")
+transfer_description = parse(model_path)
 
 print(f"Parsed {len(transfer_description.models)} models")
 print(render(transfer_description))
 ```
 
-Once parsed you can iterate through the INTERLIS structure using the
-metamodel helpers.  The example below prints every model, topic and class
-found in the transfer description, along with the attribute names defined on
-each class:
+`parse` accepts a `ParserSettings` instance that controls how imported models
+are resolved.  The parser searches the current model directory by default and
+falls back to the standard repositories listed in the default ILIDIRS string,
+`"%ILI_DIR;https://models.interlis.ch"`.  To override the lookup paths you can
+adjust the ILIDIRS configuration before invoking the parser:
+
+```python
+from pathlib import Path
+
+from ili2c.pyili2c.parser import ParserSettings, parse
+
+settings = ParserSettings()
+settings.set_ilidirs("%ILI_DIR;https://models.interlis.ch;https://example.com/models")
+
+transfer_description = parse(Path("path/to/model.ili"), settings=settings)
+```
+
+Once parsed you can iterate through the INTERLIS structure using the metamodel
+helpers.  The example below prints every model, topic and class found in the
+transfer description, along with the attribute names defined on each class:
 
 ```python
 for model in transfer_description.getModels():

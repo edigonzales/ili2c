@@ -1,4 +1,9 @@
+import threading
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+import pytest
 
 from ili2c.pyili2c.metamodel import (
     AssociationDef,
@@ -10,7 +15,8 @@ from ili2c.pyili2c.metamodel import (
     Table,
     Type,
 )
-from ili2c.pyili2c.parser import parse
+from ili2c.pyili2c.parser import ParserSettings, parse
+from ili2c.ilirepository.cache import RepositoryCache
 
 
 def test_parse_simple_model():
@@ -162,3 +168,64 @@ def test_parse_model_with_imports():
 
     attr = class_b.getAttributes()[0]
     assert attr.getDomain().getName() == "ModelA.StructA"
+
+
+@pytest.fixture
+def http_repository(tmp_path_factory):
+    repo_dir = tmp_path_factory.mktemp("ilirepo")
+    (repo_dir / "RepoModel.ili").write_text(
+        (Path(__file__).parent / "data" / "RepoModel.ili").read_text(),
+        encoding="utf8",
+    )
+    (repo_dir / "ilimodels.xml").write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<IliRepository09.RepositoryIndex xmlns="http://www.interlis.ch/INTERLIS2.3">
+  <ModelMetadata>
+    <Name>RepoModel</Name>
+    <SchemaLanguage>ili2_4</SchemaLanguage>
+    <File>RepoModel.ili</File>
+    <Version>2024-01-01</Version>
+  </ModelMetadata>
+</IliRepository09.RepositoryIndex>
+""",
+        encoding="utf8",
+    )
+
+    class SilentHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format, *args):  # noqa: A003 - match signature
+            return
+
+    handler = partial(SilentHandler, directory=str(repo_dir))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        host, port = server.server_address
+        yield f"http://{host}:{port}"
+    finally:
+        server.shutdown()
+        thread.join()
+
+
+def test_parse_import_from_repository(http_repository, tmp_path):
+    cache = RepositoryCache(base_dir=tmp_path / "ilicache")
+    settings = ParserSettings(repository_cache=cache)
+    settings.set_ilidirs(f"%ILI_DIR;{http_repository}")
+
+    path = Path(__file__).parent / "data" / "remote_main.ili"
+    td = parse(path, settings=settings)
+
+    assert td.find_model("RemoteMain") is not None
+    repo_model = td.find_model("RepoModel")
+    assert repo_model is not None
+    domain = next(d for d in repo_model.elements_of_type(Domain) if d.getName() == "MyText")
+    assert domain.getType().getName() == "TEXT*20"
+
+
+def test_parse_missing_import_raises(tmp_path):
+    settings = ParserSettings()
+    settings.set_ilidirs("%ILI_DIR")
+    path = Path(__file__).parent / "data" / "missing_import.ili"
+
+    with pytest.raises(FileNotFoundError, match="UnknownModel"):
+        parse(path, settings=settings)
