@@ -18,10 +18,10 @@ optional testing dependencies:
 python -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
-pip install -e .[test]
+pip install -e .[test] # pip install -e '.[test]' on zsh
 ```
 
-The project metadata lives in `pyproject.toml` and `setup.cfg`; either `pip` or
+The project metadata lives in `setup.py` and `setup.cfg`; either `pip` or
 `python -m build` will pick up the configuration.
 
 ## Running the tests
