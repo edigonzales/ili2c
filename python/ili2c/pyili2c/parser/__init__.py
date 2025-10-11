@@ -1,12 +1,16 @@
 """Parser entry point that builds the Python INTERLIS metamodel."""
 from __future__ import annotations
 
+import logging
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Set, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 from antlr4 import CommonTokenStream, FileStream, ParseTreeWalker
 from antlr4.error.ErrorListener import ErrorListener
 
+from ...ilirepository import IliRepositoryManager
+from ...ilirepository.cache import RepositoryCache
 from ..metamodel import (
     AbstractClassDef,
     AssociationDef,
@@ -30,6 +34,34 @@ from ..metamodel.element import Container, Element
 from .generated.grammars_antlr4.Interlis24Lexer import Interlis24Lexer
 from .generated.grammars_antlr4.Interlis24Parser import Interlis24Parser
 from .generated.grammars_antlr4.Interlis24ParserListener import Interlis24ParserListener
+
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ParserSettings:
+    """Configuration container influencing how models are resolved."""
+
+    DEFAULT_ILIDIRS = "%ILI_DIR;https://models.interlis.ch"
+
+    ilidirs: str = DEFAULT_ILIDIRS
+    repository_cache: Optional[RepositoryCache] = None
+
+    def set_ilidirs(self, ilidirs: str) -> None:
+        """Set the semicolon separated list of model directories and repositories."""
+
+        self.ilidirs = ilidirs
+
+    def get_ilidirs(self) -> str:
+        """Return the configured ILIDIRS string."""
+
+        return self.ilidirs
+
+    def create_repository_manager(self, repositories: Sequence[str]) -> IliRepositoryManager:
+        """Create a repository manager for the provided repository URIs."""
+
+        return IliRepositoryManager(repositories=repositories, cache=self.repository_cache)
 
 
 class _MetamodelBuilder(Interlis24ParserListener):
@@ -480,25 +512,22 @@ class _SilentErrorListener(ErrorListener):
         return
 
 
-def parse(path: str | Path, search_paths: Optional[Iterable[str | Path]] = None) -> TransferDescription:
+def parse(path: str | Path, settings: Optional[ParserSettings] = None) -> TransferDescription:
     """Parse an INTERLIS model file and return a populated TransferDescription.
 
     The parser follows ``IMPORTS`` statements by locating additional ``.ili``
-    files in the provided ``search_paths`` (plus the directory of the root
-    model). Each imported file is parsed exactly once.
+    files using the directories and repositories configured in ``settings``.
+    Each imported file is parsed exactly once.
     """
 
     root_path = Path(path).resolve()
     td = TransferDescription()
 
-    search_dirs: List[Path] = []
-    if search_paths is not None:
-        for candidate in search_paths:
-            directory = Path(candidate).resolve()
-            if directory not in search_dirs:
-                search_dirs.append(directory)
-    if root_path.parent not in search_dirs:
-        search_dirs.insert(0, root_path.parent)
+    parser_settings = settings or ParserSettings()
+    search_dirs, repositories = _resolve_search_sources(root_path, parser_settings)
+    repository_manager: Optional[IliRepositoryManager] = None
+    if repositories:
+        repository_manager = parser_settings.create_repository_manager(repositories)
 
     to_parse: List[Path] = [root_path]
     parsed_files: Set[Path] = set()
@@ -518,12 +547,32 @@ def parse(path: str | Path, search_paths: Optional[Iterable[str | Path]] = None)
                 continue
             if td.find_model(model_name) is not None:
                 continue
-            import_path = _resolve_import_path(model_name, current.parent, search_dirs)
+            import_path = _resolve_import_path(
+                model_name,
+                current.parent,
+                search_dirs,
+                repository_manager,
+            )
             if import_path is None:
-                continue
+                lookup_dirs = _format_directories([current.parent, *search_dirs])
+                repo_info = ", ".join(repositories) if repositories else "(none)"
+                logger.error(
+                    "Unable to locate INTERLIS model '%s'. Searched directories: %s. Repositories: %s",
+                    model_name,
+                    lookup_dirs,
+                    repo_info,
+                )
+                raise FileNotFoundError(
+                    f"Unable to locate INTERLIS model '{model_name}'."
+                )
             resolved = import_path.resolve()
             if resolved not in parsed_files and resolved not in to_parse:
                 to_parse.append(resolved)
+
+    root_models = [model for model in td.getModels() if model.getFileName() == root_path.name]
+    for model in root_models:
+        td.remove(model)
+        td.add_model(model)
 
     return td
 
@@ -544,7 +593,12 @@ def _parse_single_file(file_path: Path, td: TransferDescription) -> _MetamodelBu
     return builder
 
 
-def _resolve_import_path(model_name: str, current_dir: Path, search_dirs: Iterable[Path]) -> Optional[Path]:
+def _resolve_import_path(
+    model_name: str,
+    current_dir: Path,
+    search_dirs: Iterable[Path],
+    repository_manager: Optional[IliRepositoryManager],
+) -> Optional[Path]:
     base_name = model_name.split(".")[0]
     if not base_name:
         return None
@@ -571,4 +625,54 @@ def _resolve_import_path(model_name: str, current_dir: Path, search_dirs: Iterab
                     return candidate
         except FileNotFoundError:  # pragma: no cover - defensive
             continue
+    if repository_manager is not None:
+        path_str = repository_manager.get_model_file(base_name)
+        if path_str:
+            return Path(path_str)
     return None
+
+
+def _resolve_search_sources(
+    root_path: Path, settings: ParserSettings
+) -> Tuple[List[Path], List[str]]:
+    search_dirs: List[Path] = []
+    repositories: List[str] = []
+    seen_dirs: Set[Path] = set()
+    seen_repos: Set[str] = set()
+
+    def add_directory(candidate: Path) -> None:
+        resolved = candidate.resolve()
+        if resolved in seen_dirs:
+            return
+        seen_dirs.add(resolved)
+        search_dirs.append(resolved)
+
+    add_directory(root_path.parent)
+
+    ilidirs = settings.get_ilidirs()
+    for part in ilidirs.split(";"):
+        entry = part.strip()
+        if not entry:
+            continue
+        entry = entry.replace("%ILI_DIR", str(root_path.parent))
+        if entry.lower().startswith("http://") or entry.lower().startswith("https://"):
+            normalized = entry.rstrip("/") or entry
+            if normalized not in seen_repos:
+                repositories.append(normalized)
+                seen_repos.add(normalized)
+            continue
+        add_directory(Path(entry))
+
+    return search_dirs, repositories
+
+
+def _format_directories(directories: Iterable[Path]) -> str:
+    unique: List[str] = []
+    seen: Set[str] = set()
+    for directory in directories:
+        resolved = str(directory.resolve())
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        unique.append(resolved)
+    return ", ".join(unique)

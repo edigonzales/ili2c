@@ -1,0 +1,13 @@
+INTERLIS 2.4;
+
+MODEL GeometryCHLV95_V1 (en)
+  AT "https://example.com"
+  VERSION "2024-01-01"
+  =
+  DOMAIN MultiSurface = TEXT;
+  DOMAIN MultiDirectedLine = TEXT;
+  DOMAIN MultiLine = TEXT;
+  DOMAIN Surface = TEXT;
+  DOMAIN Coord3 = TEXT;
+  DOMAIN Area = TEXT;
+END GeometryCHLV95_V1.

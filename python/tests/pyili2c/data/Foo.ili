@@ -1,0 +1,7 @@
+INTERLIS 2.3;
+
+MODEL Foo (en)
+  AT "https://example.com"
+  VERSION "2024-01-01"
+  =
+END Foo.
