@@ -38,6 +38,7 @@ from .generated.grammars_antlr4.Interlis24ParserListener import Interlis24Parser
 
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
 def _schema_language_preferences(version: Optional[str]) -> List[str]:
