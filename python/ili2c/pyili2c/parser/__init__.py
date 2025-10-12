@@ -38,6 +38,7 @@ from .generated.grammars_antlr4.Interlis24ParserListener import Interlis24Parser
 
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
 def _schema_language_preferences(version: Optional[str]) -> List[str]:
@@ -574,13 +575,23 @@ def parse(path: str | Path, settings: Optional[ParserSettings] = None) -> Transf
     """
 
     root_path = Path(path).resolve()
+    logger.info("Starting INTERLIS parse of '%s'", root_path)
     td = TransferDescription()
 
     parser_settings = settings or ParserSettings()
     search_dirs, repositories = _resolve_search_sources(root_path, parser_settings)
+    if search_dirs:
+        logger.info(
+            "Using search directories: %s",
+            ", ".join(str(path) for path in search_dirs),
+        )
     repository_manager: Optional[IliRepositoryManager] = None
     if repositories:
         repository_manager = parser_settings.create_repository_manager(repositories)
+        logger.info(
+            "Configured repository manager with sources: %s",
+            ", ".join(repositories),
+        )
 
     to_parse: List[Path] = [root_path]
     parsed_files: Set[Path] = set()
@@ -592,6 +603,7 @@ def parse(path: str | Path, settings: Optional[ParserSettings] = None) -> Transf
         if current in parsed_files or not current.exists():
             continue
 
+        logger.info("Parsing INTERLIS file '%s'", current)
         builder = _parse_single_file(current, td)
         parsed_files.add(current)
         schema_languages = builder.schema_languages
@@ -603,6 +615,9 @@ def parse(path: str | Path, settings: Optional[ParserSettings] = None) -> Transf
                 continue
             if td.find_model(model_name) is not None:
                 continue
+            logger.info(
+                "Resolving import '%s' referenced from '%s'", model_name, current
+            )
             import_path = _resolve_import_path(
                 model_name,
                 current.parent,
@@ -614,15 +629,18 @@ def parse(path: str | Path, settings: Optional[ParserSettings] = None) -> Transf
                 lookup_dirs = _format_directories([current.parent, *search_dirs])
                 repo_info = ", ".join(repositories) if repositories else "(none)"
                 logger.error(
-                    "Unable to locate INTERLIS model '%s'. Searched directories: %s. Repositories: %s",
+                    "Failed to resolve import '%s'. Searched directories: %s. Repositories: %s",
                     model_name,
                     lookup_dirs,
                     repo_info,
                 )
                 raise FileNotFoundError(
-                    f"Unable to locate INTERLIS model '{model_name}'."
+                    f"Unable to locate INTERLIS model '{model_name}' while resolving import."
                 )
             resolved = import_path.resolve()
+            logger.info(
+                "Resolved import '%s' to '%s'", model_name, resolved
+            )
             if resolved not in parsed_files and resolved not in to_parse:
                 to_parse.append(resolved)
 
@@ -708,10 +726,18 @@ def _resolve_import_path(
     for directory in directories:
         exact = directory / f"{base_name}.ili"
         if exact.exists():
+            logger.info(
+                "Located model '%s' directly in directory '%s'", base_name, directory
+            )
             return exact
         try:
             for candidate in directory.glob("*.ili"):
                 if candidate.stem.lower() == target_lower:
+                    logger.info(
+                        "Located model '%s' by case-insensitive match in directory '%s'",
+                        base_name,
+                        directory,
+                    )
                     return candidate
         except FileNotFoundError:  # pragma: no cover - defensive
             continue
@@ -724,14 +750,41 @@ def _resolve_import_path(
             if language in seen_langs:
                 continue
             seen_langs.add(language)
+            logger.info(
+                "Searching repositories for model '%s' (schema_language=%s)",
+                base_name,
+                language or "any",
+            )
             if language is None:
-                path_str = repository_manager.get_model_file(base_name)
+                metadata = repository_manager.find_model(base_name)
             else:
-                path_str = repository_manager.get_model_file(
+                metadata = repository_manager.find_model(
                     base_name, schema_language=language
                 )
-            if path_str:
-                return Path(path_str)
+            if metadata is None:
+                logger.info(
+                    "No repository entry found for model '%s' (schema_language=%s)",
+                    base_name,
+                    language or "any",
+                )
+                continue
+            logger.info(
+                "Found model '%s' in repository '%s' (schema_language=%s)",
+                base_name,
+                metadata.repository_uri,
+                metadata.schema_language,
+            )
+            path = repository_manager.access.fetch_model_file(
+                metadata, repository_manager.model_ttl
+            )
+            if path is None:
+                logger.error(
+                    "Failed to download model '%s' from repository '%s'",
+                    base_name,
+                    metadata.repository_uri,
+                )
+                continue
+            return path
     return None
 
 

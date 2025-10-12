@@ -178,6 +178,28 @@ settings.set_ilidirs("%ILI_DIR;https://models.interlis.ch;https://example.com/mo
 transfer_description = parse(Path("path/to/model.ili"), settings=settings)
 ```
 
+### Enable parser logging
+
+The parser emits diagnostic messages via Python's standard logging framework
+under the `ili2c.pyili2c.parser` logger.  Configure logging before invoking
+`parse` to see the progress information:
+
+```python
+import logging
+from pathlib import Path
+
+from ili2c.pyili2c.parser import parse
+
+logging.basicConfig(level=logging.INFO)
+
+model_path = Path("path/to/model.ili")
+parse(model_path)
+```
+
+You can customise the output format or log level by adjusting the
+`logging.basicConfig` call or by configuring handlers on the
+`ili2c.pyili2c.parser` logger directly.
+
 Once parsed you can iterate through the INTERLIS structure using the metamodel
 helpers.  The example below prints every model, topic and class found in the
 transfer description, along with the attribute names defined on each class:
