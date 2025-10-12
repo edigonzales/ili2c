@@ -143,10 +143,13 @@ repository graph documents are cached alongside downloaded models.
 ### Parse a transfer description
 
 ```python
+import logging
 from pathlib import Path
 
 from ili2c.pyili2c.parser import ParserSettings, parse
 from ili2c.pyili2c.mermaid import render
+
+logging.basicConfig(level=logging.INFO)
 
 model_path = Path("path/to/model.ili")
 transfer_description = parse(model_path)
