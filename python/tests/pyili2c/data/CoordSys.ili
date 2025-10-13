@@ -1,0 +1,6 @@
+INTERLIS 2.3;
+
+MODEL CoordSys (en)
+  =
+  IMPORTS UNQUALIFIED INTERLIS;
+END CoordSys.

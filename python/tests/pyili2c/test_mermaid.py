@@ -102,7 +102,11 @@ def test_render_real_world_model(tmp_path) -> None:
         (data_dir / "GeometryCHLV95_V1.ili").read_text(),
         encoding="utf8",
     )
-    (tmp_path / "Text.ili").write_text((data_dir / "Text.ili").read_text(), encoding="utf8")
+    for dependency in ["Text.ili", "Units.ili", "CoordSys.ili"]:
+        (tmp_path / dependency).write_text(
+            (data_dir / dependency).read_text(),
+            encoding="utf8",
+        )
 
     settings = ParserSettings()
     settings.set_ilidirs("%ILI_DIR")
