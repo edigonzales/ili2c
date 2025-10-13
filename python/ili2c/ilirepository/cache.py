@@ -20,7 +20,15 @@ logger = logging.getLogger(__name__)
 
 _INVALID_CHARS = set('<>:"\\|?*%&')
 _INVALID_CHARS_WITH_SLASH = _INVALID_CHARS | {"/"}
-_DEFAULT_HEADERS = {"User-Agent": "ili2c-python/1.0"}
+_DEFAULT_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    ),
+    "Accept": "*/*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Connection": "close",
+}
 
 
 @dataclass
@@ -57,7 +65,7 @@ class RepositoryCache:
             if env_dir:
                 base_dir = Path(env_dir)
             else:
-                base_dir = Path.home() / ".ilicache"
+                base_dir = Path.home() / ".pyilicache"
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
 

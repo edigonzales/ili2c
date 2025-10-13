@@ -78,7 +78,7 @@ The repository helpers mirror HTTP repositories onto the local file system via
   deciding whether to re-download the file.
 
 `RepositoryCache` maps each repository URL to a dedicated directory inside the
-cache root (`$ILI_CACHE` or `~/.ilicache`).  For HTTP repositories it sanitises
+cache root (`$ILI_CACHE` or `~/.pyilicache`).  For HTTP repositories it sanitises
 path components to create safe file names (or uses MD5 hashes when the
 `ILI_CACHE_FILENAME=MD5` environment variable is set).  When asked to fetch a
 resource it:
