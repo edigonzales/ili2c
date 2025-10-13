@@ -1,0 +1,6 @@
+INTERLIS 2.3;
+
+MODEL Units (en)
+  =
+  IMPORTS UNQUALIFIED INTERLIS;
+END Units.

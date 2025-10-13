@@ -197,6 +197,22 @@ def test_parse_model_with_imports():
     assert attr.getDomain().getName() == "ModelA.StructA"
 
 
+def test_parse_model_with_unqualified_interlis_import(tmp_path):
+    data_dir = Path(__file__).parent / "data"
+    for name in ["GeometryCHLV95_V1.ili", "Units.ili", "CoordSys.ili"]:
+        (tmp_path / name).write_text((data_dir / name).read_text(), encoding="utf8")
+
+    settings = ParserSettings()
+    settings.set_ilidirs("%ILI_DIR")
+    td = parse(tmp_path / "GeometryCHLV95_V1.ili", settings=settings)
+
+    model = td.find_model("GeometryCHLV95_V1")
+    assert model is not None
+
+    domain_names = {domain.getName() for domain in model.elements_of_type(Domain)}
+    assert "MultiSurface" in domain_names
+
+
 @pytest.fixture
 def http_repository(tmp_path_factory):
     repo_dir = tmp_path_factory.mktemp("ilirepo")

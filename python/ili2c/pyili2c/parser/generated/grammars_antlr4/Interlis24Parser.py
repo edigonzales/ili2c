@@ -1126,21 +1126,34 @@ class Interlis24Parser ( Parser ):
             self.enterOuterAlt(localctx, 1)
             self.state = 172
             self.match(Interlis24Parser.IMPORTS)
-            self.state = 173
-            self.qualifiedName()
-            self.state = 178
+
+            def _parse_import():
+                token_type = self._input.LA(1)
+                if token_type == Interlis24Parser.ID:
+                    token_text = (self._input.LT(1).text or "").upper()
+                    if token_text == "UNQUALIFIED":
+                        self.consume()
+                        token_type = self._input.LA(1)
+                if token_type == Interlis24Parser.INTERLIS:
+                    self.match(Interlis24Parser.INTERLIS)
+                else:
+                    self.qualifiedName()
+
+            self.state = 175
+            _parse_import()
+            self.state = 182
             self._errHandler.sync(self)
             _la = self._input.LA(1)
-            while _la==28:
-                self.state = 174
+            while _la == 28:
+                self.state = 176
                 self.match(Interlis24Parser.COMMA)
-                self.state = 175
-                self.qualifiedName()
-                self.state = 180
+                self.state = 177
+                _parse_import()
+                self.state = 184
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
 
-            self.state = 181
+            self.state = 185
             self.match(Interlis24Parser.SEMICOLON)
         except RecognitionException as re:
             localctx.exception = re

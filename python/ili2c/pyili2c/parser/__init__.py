@@ -230,11 +230,57 @@ class _MetamodelBuilder(Interlis24ParserListener):
     def enterImportsStmt(self, ctx: Interlis24Parser.ImportsStmtContext) -> None:  # noqa: N802
         current_model = self._current_model()
         importer_name = current_model.getName() if current_model is not None else None
-        for qname in ctx.qualifiedName():
-            name = self._qualified_name(qname)
+        if self._tokens is None:
+            for qname in ctx.qualifiedName():
+                name = self._qualified_name(qname)
+                if name:
+                    self.imports.append(name)
+                    self.import_relations.append((importer_name, name))
+            return
+
+        tokens = self._tokens.tokens
+        start = ctx.start.tokenIndex
+        stop = ctx.stop.tokenIndex
+        index = start + 1  # skip IMPORTS keyword
+
+        while index <= stop:
+            token = tokens[index]
+            token_type = token.type
+
+            if token_type == Interlis24Parser.SEMICOLON:
+                break
+            if token_type == Interlis24Parser.COMMA:
+                index += 1
+                continue
+
+            if token_type == Interlis24Parser.ID and (token.text or "").upper() == "UNQUALIFIED":
+                index += 1
+                if index > stop:
+                    break
+                token = tokens[index]
+                token_type = token.type
+
+            name_parts: List[str] = []
+            while index <= stop:
+                token = tokens[index]
+                token_type = token.type
+                if token_type in (Interlis24Parser.ID, Interlis24Parser.INTERLIS):
+                    name_parts.append(token.text or "")
+                    index += 1
+                    if index <= stop and tokens[index].type == Interlis24Parser.DOT:
+                        name_parts.append(".")
+                        index += 1
+                        continue
+                    break
+                else:
+                    break
+
+            name = "".join(name_parts).strip()
             if name:
                 self.imports.append(name)
                 self.import_relations.append((importer_name, name))
+            else:
+                index += 1
 
     def enterAssociationDef(self, ctx: Interlis24Parser.AssociationDefContext) -> None:  # noqa: N802
         association = AssociationDef(ctx.ID(0).getText())
@@ -612,6 +658,8 @@ def parse(path: str | Path, settings: Optional[ParserSettings] = None) -> Transf
         for import_name in builder.imports:
             model_name = import_name.split(".")[0]
             if not model_name:
+                continue
+            if model_name.upper() == "INTERLIS":
                 continue
             if td.find_model(model_name) is not None:
                 continue

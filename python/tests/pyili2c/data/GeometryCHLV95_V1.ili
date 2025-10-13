@@ -4,6 +4,10 @@ MODEL GeometryCHLV95_V1 (en)
   AT "https://example.com"
   VERSION "2023-01-01"
   =
+  IMPORTS UNQUALIFIED INTERLIS;
+  IMPORTS Units;
+  IMPORTS CoordSys;
+
   DOMAIN MultiSurface = TEXT;
   DOMAIN MultiDirectedLine = TEXT;
   DOMAIN MultiLine = TEXT;
