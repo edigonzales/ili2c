@@ -521,10 +521,15 @@ class _TypeNamer:
             if container is not None and container.getName():
                 return cls._simple_name(container.getName())
             return "Enumeration"
-        if isinstance(type_, FormattedType) and _is_date_or_time(type_):
+        if isinstance(type_, FormattedType):
+            if _is_date_or_time(type_):
+                base = type_.getDefinedBaseDomain()
+                if base is not None:
+                    return cls._simple_name(base.getName())
             base = type_.getDefinedBaseDomain()
             if base is not None:
-                return cls._simple_name(base.getName())
+                if base.getName() is not None:
+                    return cls._simple_name(base.getName())
         if isinstance(type_, TextOIDType):
             oid_type = type_.getOIDType()
             if isinstance(oid_type, TypeAlias):
@@ -532,7 +537,7 @@ class _TypeNamer:
                 if aliasing is not None:
                     return cls._simple_name(aliasing.getName())
             if isinstance(oid_type, Type):
-                return cls._simple_name(oid_type.getName())
+                return "Text (OID)"
         if isinstance(type_, TypeAlias):
             aliasing = type_.getAliasing()
             if aliasing is not None:
