@@ -93,6 +93,12 @@ def test_render_mermaid_diagram() -> None:
 
     assert diagram == expected
 
+def test_render_synthetic_test_model(tmp_path) -> None:
+    data_dir = Path(__file__).parent / "data"
+    path = tmp_path / "TestSuite_mod-0.ili"
+    path.write_text((data_dir / "TestSuite_mod-0.ili").read_text(), encoding="utf8")
+    td = parse(path)
+    diagram = render(td)
 
 def test_render_real_world_model(tmp_path) -> None:
     data_dir = Path(__file__).parent / "data"
