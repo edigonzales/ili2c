@@ -297,6 +297,62 @@ class NumericType(Type):
         return "NUMERIC"
 
 
+class GeometryType(Type):
+    def __init__(self, *, kind: str, definition: str, name: Optional[str] = None) -> None:
+        super().__init__(name=name or kind.upper())
+        self._kind = kind
+        self._definition = definition
+
+    def getKind(self) -> str:
+        return self._kind
+
+    def getDefinition(self) -> str:
+        return self._definition
+
+    def getDisplayName(self) -> str:
+        return self._kind
+
+
+class AreaType(GeometryType):
+    def __init__(self, *, definition: str, name: Optional[str] = None) -> None:
+        super().__init__(kind="Area", definition=definition, name=name)
+
+
+class SurfaceType(GeometryType):
+    def __init__(self, *, definition: str, name: Optional[str] = None) -> None:
+        super().__init__(kind="Surface", definition=definition, name=name)
+
+
+class MultiSurfaceType(GeometryType):
+    def __init__(self, *, definition: str, name: Optional[str] = None) -> None:
+        super().__init__(kind="MultiSurface", definition=definition, name=name)
+
+
+class MultiAreaType(GeometryType):
+    def __init__(self, *, definition: str, name: Optional[str] = None) -> None:
+        super().__init__(kind="MultiArea", definition=definition, name=name)
+
+
+class PolylineType(GeometryType):
+    def __init__(self, *, definition: str, name: Optional[str] = None) -> None:
+        super().__init__(kind="Polyline", definition=definition, name=name)
+
+
+class MultiPolylineType(GeometryType):
+    def __init__(self, *, definition: str, name: Optional[str] = None) -> None:
+        super().__init__(kind="MultiPolyline", definition=definition, name=name)
+
+
+class CoordType(GeometryType):
+    def __init__(self, *, definition: str, name: Optional[str] = None) -> None:
+        super().__init__(kind="Coord", definition=definition, name=name)
+
+
+class MultiCoordType(GeometryType):
+    def __init__(self, *, definition: str, name: Optional[str] = None) -> None:
+        super().__init__(kind="MultiCoord", definition=definition, name=name)
+
+
 class EnumerationType(Type):
     def __init__(self, name: Optional[str], literals: Sequence[str]) -> None:
         super().__init__(name=name)
