@@ -148,3 +148,23 @@ END Geo.
     assert "MultiPolyAttr[0..1] : MultiPolyline" in diagram
     assert "CoordAttr[0..1] : Coord" in diagram
     assert "MultiCoordAttr[0..1] : MultiCoord" in diagram
+
+
+def test_blackbox_binary_types_render_with_label(tmp_path):
+    model_text = """INTERLIS 2.4;
+MODEL BinaryModel =
+  TOPIC Main =
+    CLASS Example =
+      Payload : BLACKBOX BINARY;
+    END Example;
+  END Main;
+END BinaryModel.
+"""
+
+    model_path = tmp_path / "binary_model.ili"
+    model_path.write_text(model_text, encoding="utf8")
+
+    td = parse(model_path)
+    diagram = render(td)
+
+    assert "Payload[0..1] : Blackbox Binary" in diagram

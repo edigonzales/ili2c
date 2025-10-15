@@ -14,6 +14,7 @@ from ..metamodel import (
     AreaType,
     Association,
     AssociationEnd,
+    BlackboxType,
     Cardinality,
     Constraint,
     CoordType,
@@ -659,6 +660,11 @@ class _ModelBuilder:
         if upper.startswith("ALLOF"):
             base = value[len("ALLOF") :].strip()
             return EnumTreeValueType(base)
+
+        if upper.startswith("BLACKBOX"):
+            remainder = value[len("BLACKBOX") :].strip()
+            kind = remainder.split()[0] if remainder else ""
+            return BlackboxType(kind=kind.upper())
 
         if upper.startswith("OID"):
             remainder = value[len("OID") :]
