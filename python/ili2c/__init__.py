@@ -1,3 +1,5 @@
 """Python helpers for the ili2c toolchain."""
 
-__all__ = ["pyili2c"]
+from . import ilirepository, pyili2c  # noqa: F401
+
+__all__ = ["pyili2c", "ilirepository"]

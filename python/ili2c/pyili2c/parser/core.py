@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence
+from urllib.parse import urlparse
 
 from antlr4 import CommonTokenStream, FileStream
 
@@ -33,9 +34,27 @@ from .generated.grammars_antlr4.InterlisParserPy import InterlisParserPy
 class ParserSettings:
     """Settings that influence how models are located."""
 
-    def __init__(self, ilidirs: Optional[Iterable[str]] = None, repository_cache=None) -> None:
+    def __init__(
+        self,
+        ilidirs: Optional[Iterable[str]] = None,
+        repository_cache=None,
+        repositories: Optional[Iterable[str]] = None,
+        repository_manager=None,
+        repository_meta_ttl: float = 86400.0,
+        repository_model_ttl: float = 7 * 24 * 3600.0,
+    ) -> None:
         self._raw_ilidirs: List[str] = []
+        self._directory_ilidirs: List[str] = []
+        self._ilidir_repositories: List[str] = []
         self.repository_cache = repository_cache
+        self.repository_meta_ttl = repository_meta_ttl
+        self.repository_model_ttl = repository_model_ttl
+        self._explicit_repository_manager = repository_manager is not None
+        self._repository_manager = repository_manager
+        self._repositories: List[str] = []
+        if repositories is not None:
+            for repository in repositories:
+                self.add_repository(repository)
         if ilidirs is not None:
             self.set_ilidirs(ilidirs)
 
@@ -45,9 +64,64 @@ class ParserSettings:
         else:
             parts = [p for p in value if p]
         self._raw_ilidirs = parts
+        self._directory_ilidirs = []
+        self._ilidir_repositories = []
+        for entry in parts:
+            if entry == "%ILI_DIR":
+                self._directory_ilidirs.append(entry)
+                continue
+            parsed = urlparse(entry)
+            if parsed.scheme in {"http", "https", "file"}:
+                repository_uri = _normalise_repository_uri(entry)
+                if repository_uri:
+                    self._ilidir_repositories.append(repository_uri)
+                continue
+            self._directory_ilidirs.append(entry)
+        if not self._explicit_repository_manager:
+            self._repository_manager = None
 
     def get_ilidirs(self) -> Sequence[str]:
         return tuple(self._raw_ilidirs)
+
+    def iter_directory_ilidirs(self) -> Sequence[str]:
+        return tuple(self._directory_ilidirs)
+
+    def add_repository(self, uri: str) -> None:
+        uri = _normalise_repository_uri(uri)
+        if not uri:
+            return
+        if uri not in self._repositories:
+            self._repositories.append(uri)
+            if not self._explicit_repository_manager:
+                self._repository_manager = None
+
+    def set_repository_manager(self, manager) -> None:
+        self._repository_manager = manager
+        self._explicit_repository_manager = manager is not None
+
+    def get_repository_manager(self):
+        if self._repository_manager is not None:
+            return self._repository_manager
+        repositories: List[str] = []
+        seen: set[str] = set()
+        for uri in (*self._repositories, *self._ilidir_repositories):
+            if uri and uri not in seen:
+                seen.add(uri)
+                repositories.append(uri)
+        from ...ilirepository import IliRepositoryManager
+        if not repositories:
+            repositories = list(IliRepositoryManager.DEFAULT_REPOSITORIES)
+        from ...ilirepository.cache import RepositoryCache
+
+        cache = self.repository_cache or RepositoryCache()
+        self.repository_cache = cache
+        self._repository_manager = IliRepositoryManager(
+            repositories=repositories,
+            cache=cache,
+            meta_ttl=self.repository_meta_ttl,
+            model_ttl=self.repository_model_ttl,
+        )
+        return self._repository_manager
 
 
 class _ParseContext:
@@ -55,6 +129,7 @@ class _ParseContext:
         self.settings = settings
         self.models: dict[str, Model] = {}
         self._parsed_files: set[Path] = set()
+        self._repository_manager = settings.get_repository_manager()
 
     def parse_file(self, path: Path, td: TransferDescription) -> Model:
         path = path.resolve()
@@ -126,9 +201,22 @@ class _ParseContext:
 
         add_directory(base_path.parent)
 
-        for entry in self.settings.get_ilidirs():
+        for entry in self.settings.iter_directory_ilidirs():
             candidate_dir = base_path.parent if entry == "%ILI_DIR" else Path(entry)
             add_directory(candidate_dir)
+
+        manager = self._repository_manager
+        if manager is not None:
+            schema_language = None
+            for model in self.models.values():
+                if getattr(model, "_source", None) == base_path:
+                    schema_language = model.getSchemaLanguage()
+                    break
+            path_str = manager.get_model_file(name, schema_language=schema_language)
+            if path_str:
+                remote_path = Path(path_str)
+                if remote_path.exists():
+                    add_candidate(remote_path)
 
         return candidates[0] if candidates else None
 
@@ -141,6 +229,14 @@ def parse(path: str | Path, settings: Optional[ParserSettings] = None) -> Transf
     td = TransferDescription()
     context.parse_file(Path(path), td)
     return td
+
+
+def _normalise_repository_uri(uri: str) -> str:
+    if not uri:
+        return uri
+    if not uri.endswith("/"):
+        return uri + "/"
+    return uri
 
 
 # =============================================================================
