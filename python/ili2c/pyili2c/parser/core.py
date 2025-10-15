@@ -226,8 +226,10 @@ def parse(path: str | Path, settings: Optional[ParserSettings] = None) -> Transf
 
     settings = settings or ParserSettings()
     context = _ParseContext(settings=settings)
+    primary_path = Path(path).resolve()
     td = TransferDescription()
-    context.parse_file(Path(path), td)
+    td.setPrimarySource(primary_path)
+    context.parse_file(primary_path, td)
     return td
 
 

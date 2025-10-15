@@ -83,7 +83,15 @@ def build_diagram(td: TransferDescription) -> Diagram:
     diagram = Diagram()
     diagram.get_or_create_namespace("<root>")
 
-    for model in td.getModels():
+    models: Iterable[Model]
+    try:
+        models = td.getModelsFromLastFile()
+    except AttributeError:
+        models = td.getModels()
+    if not models:
+        models = td.getModels()
+
+    for model in models:
         _collect_model_level(diagram, model)
         for topic in model.getTopics():
             _collect_topic(diagram, model, topic)
@@ -116,9 +124,6 @@ def _collect_model_level(diagram: Diagram, model: Model) -> None:
                 fqn,
                 Node(fqn=fqn, display_name=domain.getName(), stereotypes=["Enumeration"]),
             )
-            if domain_type.getLiterals() and not node.attributes:
-                literals = ", ".join(domain_type.getLiterals())
-                node.attributes.append(literals)
             if fqn not in namespace.node_order:
                 namespace.node_order.append(fqn)
 
@@ -265,7 +270,7 @@ def _viewable_fqn(viewable: Viewable) -> str:
     if scoped:
         return scoped
     name = viewable.getName()
-    return name if name else "<unnamed>"
+    return name if name else "unnamed"
 
 
 def _format_constraint_name(index: int, name: str | None) -> str:
@@ -276,14 +281,22 @@ def _format_constraint_name(index: int, name: str | None) -> str:
 def _attribute_type_name(domain: Type) -> str:
     if isinstance(domain, ListType):
         elem = domain.getElementType()
-        elem_name = elem.getName() or "<Unknown>"
-        prefix = "Bag" if domain.isBag() else "List"
-        return f"{prefix}<{elem_name}>"
+        elem_name = _simple_name(elem.getName()) or "Unknown"
+        return elem_name
     if isinstance(domain, EnumerationType):
+        enum_name = _simple_name(domain.getName())
+        if enum_name:
+            return enum_name
         literals = ", ".join(domain.getLiterals())
-        return f"{{{literals}}}" if literals else "Enumeration"
+        return literals if literals else "Enumeration"
     name = domain.getName()
-    return name if name else "<Unknown>"
+    return name if name else "Unknown"
+
+
+def _simple_name(name: str | None) -> str | None:
+    if name is None:
+        return None
+    return name.split(".")[-1] if name else None
 
 
 def _format_cardinality(cardinality: Cardinality) -> str:
