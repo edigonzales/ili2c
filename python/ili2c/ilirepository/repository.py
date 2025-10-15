@@ -106,7 +106,17 @@ class RepositoryAccess:
     def _read_directory_models(self, path: Path) -> List[ModelMetadata]:
         if not path.is_dir():
             return []
-        models: List[ModelMetadata] = []
+        index_file = path / "ilimodels.xml"
+        repository_uri = str(path.resolve()) + "/"
+        if index_file.exists():
+            try:
+                models = list(_parse_model_index(index_file, repository_uri))
+            except ET.ParseError as exc:
+                logger.warning("Failed to parse ilimodels.xml from %s: %s", path, exc)
+                models = []
+            if models:
+                return _latest_versions(models)
+        models = []
         for ili_path in path.rglob("*.ili"):
             rel = ili_path.relative_to(path).as_posix()
             metadata = ModelMetadata(

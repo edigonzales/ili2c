@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 class IliRepositoryManager:
     """A small Pythonic port of ``ch.interlis.ilirepository.IliManager``."""
 
+    DEFAULT_REPOSITORIES: tuple[str, ...] = ("http://models.interlis.ch/",)
+
     def __init__(
         self,
         repositories: Optional[Iterable[str]] = None,
@@ -24,13 +26,21 @@ class IliRepositoryManager:
         meta_ttl: float = 86400.0,
         model_ttl: float = 7 * 24 * 3600.0,
     ) -> None:
-        self.repositories = list(repositories or [])
+        if repositories is None:
+            repositories = self.DEFAULT_REPOSITORIES
+        self.repositories: List[str] = []
+        self.set_repositories(repositories)
         self.cache = cache or RepositoryCache()
         self.access = RepositoryAccess(self.cache, meta_ttl=meta_ttl)
         self.model_ttl = model_ttl
 
     def set_repositories(self, repositories: Iterable[str]) -> None:
-        self.repositories = list(repositories)
+        normalised: List[str] = []
+        for uri in repositories:
+            uri = _normalise_repository_uri(uri)
+            if uri and uri not in normalised:
+                normalised.append(uri)
+        self.repositories = normalised
 
     def list_models(self, name: Optional[str] = None) -> List[ModelMetadata]:
         result: List[ModelMetadata] = []
