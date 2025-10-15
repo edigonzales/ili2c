@@ -11,10 +11,12 @@ from urllib.parse import urlparse
 from antlr4 import CommonTokenStream, FileStream
 
 from ..metamodel import (
+    AreaType,
     Association,
     AssociationEnd,
     Cardinality,
     Constraint,
+    CoordType,
     Domain,
     EnumTreeValueType,
     EnumerationType,
@@ -24,9 +26,15 @@ from ..metamodel import (
     ListType,
     Attribute,
     Model,
+    MultiAreaType,
+    MultiCoordType,
+    MultiPolylineType,
+    MultiSurfaceType,
     NumericType,
     ObjectType,
+    PolylineType,
     ReferenceType,
+    SurfaceType,
     Table,
     TextOIDType,
     TextType,
@@ -671,6 +679,10 @@ class _ModelBuilder:
             minimum, maximum = self._split_range(range_text.strip("[]")) if range_text else (None, None)
             return NumericType(name="NUMERIC", minimum=minimum, maximum=maximum)
 
+        geometry_type = self._parse_geometry_type(value)
+        if geometry_type is not None:
+            return geometry_type
+
         if re.match(r"^-?\d", value):
             minimum, maximum = self._split_range(value)
             if minimum is not None or maximum is not None:
@@ -758,6 +770,39 @@ class _ModelBuilder:
     def _build_object_type_from_ctx(self, ctx) -> Type:
         name = self._restricted_ref_name(ctx)
         return ObjectType(target=name) if name else Type(None)
+
+    def _parse_geometry_type(self, text: str) -> Type | None:
+        upper = text.upper().strip()
+
+        if self._matches_geometry_prefix(upper, "MULTISURFACE"):
+            return MultiSurfaceType(definition=text)
+        if self._matches_geometry_prefix(upper, "MULTIAREA"):
+            return MultiAreaType(definition=text)
+        if self._matches_geometry_prefix(upper, "MULTIPOLYLINE"):
+            return MultiPolylineType(definition=text)
+        if self._matches_geometry_prefix(upper, "MULTICOORD"):
+            return MultiCoordType(definition=text)
+        if self._matches_geometry_prefix(upper, "SURFACE"):
+            return SurfaceType(definition=text)
+        if self._matches_geometry_prefix(upper, "AREA"):
+            return AreaType(definition=text)
+        if self._matches_geometry_prefix(upper, "POLYLINE"):
+            return PolylineType(definition=text)
+        if self._matches_geometry_prefix(upper, "COORD"):
+            return CoordType(definition=text)
+        return None
+
+    @staticmethod
+    def _matches_geometry_prefix(value: str, prefix: str) -> bool:
+        if not value.startswith(prefix):
+            return False
+        if len(value) == len(prefix):
+            return True
+        next_part = value[len(prefix) :]
+        next_char = next_part[0]
+        if not next_char.isalpha():
+            return True
+        return next_part.startswith("WITH") or next_part.startswith("WITHOUT")
 
     def _context_text(self, ctx) -> Optional[str]:
         if ctx is None:

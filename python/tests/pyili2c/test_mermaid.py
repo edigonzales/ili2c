@@ -109,3 +109,42 @@ END Fancy.
     assert "    rot.hell" in diagram
     assert "    rot.dunkel" in diagram
     assert "    blau" in diagram
+
+
+def test_geometry_types_render_with_builtin_names(tmp_path):
+    model_text = """INTERLIS 2.4;
+MODEL Geo =
+  DOMAIN
+    Vertex = COORD 0.0 .. 1000.0,
+                    0.0 .. 1000.0;
+  TOPIC T =
+    CLASS Feature =
+      AreaAttr : AREA WITH (STRAIGHTS, ARCS) VERTEX Vertex WITHOUT OVERLAPS > 0.10;
+      SurfaceAttr : SURFACE WITH (STRAIGHTS) VERTEX Vertex;
+      MultiAreaAttr : MULTIAREA WITH (STRAIGHTS) VERTEX Vertex;
+      MultiSurfaceAttr : MULTISURFACE WITH (STRAIGHTS) VERTEX Vertex;
+      PolyAttr : POLYLINE WITH (STRAIGHTS) VERTEX Vertex;
+      MultiPolyAttr : MULTIPOLYLINE WITH (STRAIGHTS) VERTEX Vertex;
+      CoordAttr : COORD 0.0 .. 10.0,
+                         0.0 .. 10.0;
+      MultiCoordAttr : MULTICOORD 0.0 .. 10.0,
+                                0.0 .. 10.0;
+    END Feature;
+  END T;
+END Geo.
+"""
+
+    model_path = tmp_path / "geom.ili"
+    model_path.write_text(model_text, encoding="utf8")
+
+    td = parse(model_path)
+    diagram = render(td)
+
+    assert "AreaAttr[0..1] : Area" in diagram
+    assert "SurfaceAttr[0..1] : Surface" in diagram
+    assert "MultiAreaAttr[0..1] : MultiArea" in diagram
+    assert "MultiSurfaceAttr[0..1] : MultiSurface" in diagram
+    assert "PolyAttr[0..1] : Polyline" in diagram
+    assert "MultiPolyAttr[0..1] : MultiPolyline" in diagram
+    assert "CoordAttr[0..1] : Coord" in diagram
+    assert "MultiCoordAttr[0..1] : MultiCoord" in diagram
