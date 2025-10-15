@@ -1,8 +1,0 @@
-INTERLIS 2.4;
-
-MODEL RepoLinkedModel (en)
-  AT "https://example.com"
-  VERSION "2024-03-01"
-  =
-  DOMAIN LinkedText = TEXT*10;
-END RepoLinkedModel.

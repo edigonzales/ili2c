@@ -1,8 +1,0 @@
-INTERLIS 2.4;
-
-MODEL RepoModel (en)
-  AT "https://example.com"
-  VERSION "2024-01-01"
-  =
-  DOMAIN MyText = TEXT*20;
-END RepoModel.
