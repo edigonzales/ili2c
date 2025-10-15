@@ -124,6 +124,7 @@ def _collect_model_level(diagram: Diagram, model: Model) -> None:
                 fqn,
                 Node(fqn=fqn, display_name=domain.getName(), stereotypes=["Enumeration"]),
             )
+            node.attributes = [literal for literal in domain_type.getLiterals()]
             if fqn not in namespace.node_order:
                 namespace.node_order.append(fqn)
 
@@ -280,15 +281,9 @@ def _format_constraint_name(index: int, name: str | None) -> str:
 
 def _attribute_type_name(domain: Type) -> str:
     if isinstance(domain, ListType):
-        elem = domain.getElementType()
-        elem_name = _simple_name(elem.getName()) or "Unknown"
-        return elem_name
-    if isinstance(domain, EnumerationType):
-        enum_name = _simple_name(domain.getName())
-        if enum_name:
-            return enum_name
-        literals = ", ".join(domain.getLiterals())
-        return literals if literals else "Enumeration"
+        return _attribute_type_name(domain.getElementType())
+    if hasattr(domain, "getDisplayName"):
+        return domain.getDisplayName()
     name = domain.getName()
     return name if name else "Unknown"
 

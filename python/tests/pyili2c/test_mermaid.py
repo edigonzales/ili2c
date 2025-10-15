@@ -77,3 +77,35 @@ def test_so_arp_model_diagram_has_expected_relationships():
         'SO_ARP_SEin_Konfiguration_20250115.Auswertung.Fubar "0..*" -- "0..*" SO_ARP_SEin_Konfiguration_20250115.Grundlagen.GemeindeYYYY'
         in diagram
     )
+
+
+def test_render_inline_enumeration_and_formatted_types(tmp_path):
+    model_text = """INTERLIS 2.4;
+MODEL Fancy =
+  DOMAIN DateFmt = FORMAT BASED ON INTERLIS.GregorianDate (Year ":" Month ":" Day);
+  DOMAIN Color = (
+    rot (
+      hell,
+      dunkel
+    ),
+    blau
+  );
+  CLASS Example =
+    Inline : (rot (hell, dunkel), blau);
+    When : FORMAT DateFmt "2017:01:01" .. "2017:01:31";
+  END Example;
+END Fancy.
+"""
+
+    path = tmp_path / "diagram.ili"
+    path.write_text(model_text, encoding="utf8")
+
+    td = parse(path)
+    diagram = render(td)
+
+    assert "Inline[0..1] : rot.hell, rot.dunkel, blau" in diagram
+    assert "When[0..1] : DateFmt" in diagram
+    assert "class Fancy.Color" in diagram
+    assert "    rot.hell" in diagram
+    assert "    rot.dunkel" in diagram
+    assert "    blau" in diagram
