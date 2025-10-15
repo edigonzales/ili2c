@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+import re
 from typing import Iterable, List, Optional, Sequence
 from urllib.parse import urlparse
 
@@ -15,16 +16,24 @@ from ..metamodel import (
     Cardinality,
     Constraint,
     Domain,
+    EnumTreeValueType,
     EnumerationType,
+    FormattedType,
     Function,
     FunctionArgument,
     ListType,
     Attribute,
     Model,
+    NumericType,
+    ObjectType,
+    ReferenceType,
     Table,
+    TextOIDType,
+    TextType,
     Topic,
     TransferDescription,
     Type,
+    TypeAlias,
     Viewable,
 )
 from .generated.grammars_antlr4.InterlisLexer import InterlisLexer
@@ -318,12 +327,17 @@ class _ModelBuilder:
             enumeration_value = ctx.enumeration()
             if isinstance(enumeration_value, list):
                 enumeration_value = enumeration_value[0] if enumeration_value else None
+
             if type_ctx is None and enumeration_value is not None:
-                enum_ctx = enumeration_value
-                literals = [literal.getText() for literal in enum_ctx.enumElement()]
-                domain_type = EnumerationType(name=None, literals=literals)
+                enum_text = enumeration_value.getText()
+                domain_type = self._build_enumeration_type(
+                    enum_text,
+                    name=name_token.getText(),
+                )
             else:
                 domain_type = self._build_type_from_ili(type_ctx) if type_ctx else Type(None)
+                if isinstance(domain_type, EnumerationType) and not domain_type.getName():
+                    domain_type.setName(name_token.getText())
             domain = Domain(name=name_token.getText(), domain_type=domain_type)
             domains.append(domain)
         return domains
@@ -517,42 +531,38 @@ class _ModelBuilder:
             is_bag = ctx.BAG() is not None
             cardinality = self._build_cardinality(ctx.cardinality())
             ref_ctx = ctx.restrictedStructureRef()
-            element_name = self._restricted_ref_name(ref_ctx)
-            element_type = Type(element_name)
+            element_type = self._build_object_type_from_ctx(ref_ctx)
             return ListType(element_type=element_type, is_bag=is_bag, cardinality=cardinality)
         if ctx.attrType():
             return self._build_attr_type(ctx.attrType())
         if ctx.numeric():
-            return Type(ctx.numeric().getText())
-        if ctx.enumeration():
-            literals = [literal.getText() for literal in ctx.enumeration().enumElement()]
-            return EnumerationType(name=None, literals=literals)
+            return self._parse_numeric_type(ctx.numeric().getText())
+        enumeration_ctx = ctx.enumeration()
+        if isinstance(enumeration_ctx, list):
+            enumeration_ctx = enumeration_ctx[0] if enumeration_ctx else None
+        if enumeration_ctx is not None:
+            return self._build_enumeration_type(enumeration_ctx.getText())
         if ctx.NUMERIC():
-            return Type("NUMERIC")
-        return Type(ctx.getText())
+            return NumericType(name="NUMERIC")
+        return self._type_from_text(ctx.getText())
 
     def _build_attr_type(self, ctx) -> Type:
         if ctx is None:
             return Type(None)
         if ctx.domainRef():
-            return Type(ctx.domainRef().getText())
+            ref_text = self._context_text(ctx.domainRef())
+            return TypeAlias(ref_text) if ref_text else Type(None)
         if ctx.restrictedStructureRef():
-            return Type(self._restricted_ref_name(ctx.restrictedStructureRef()))
+            return self._build_object_type_from_ctx(ctx.restrictedStructureRef())
         if ctx.iliType():
             return self._build_type_from_ili(ctx.iliType())
-        return Type(ctx.getText())
+        return self._type_from_text(ctx.getText())
 
     def _build_type_from_ili(self, ctx) -> Type:
         if ctx is None:
             return Type(None)
         text = ctx.getText()
-        if text.startswith("(") and text.endswith(")"):
-            inner = text[1:-1]
-            if inner:
-                literals = [literal for literal in inner.replace(" ", "").split(",") if literal]
-                if literals:
-                    return EnumerationType(name=None, literals=literals)
-        return Type(text)
+        return self._type_from_text(text)
 
     def _build_cardinality(self, ctx) -> Optional[Cardinality]:
         if ctx is None:
@@ -572,6 +582,191 @@ class _ModelBuilder:
             minimum = 0
             maximum = -1
         return Cardinality(minimum, maximum)
+
+    def _build_enumeration_type(self, text: str, *, name: Optional[str] = None) -> EnumerationType:
+        literals = self._flatten_enumeration_literals(text)
+        return EnumerationType(name=name, literals=literals)
+
+    def _flatten_enumeration_literals(self, text: str) -> List[str]:
+        if not text:
+            return []
+        value = text.strip()
+        if value.startswith("(") and value.endswith(")"):
+            value = value[1:-1]
+        stack: List[str] = []
+        token = ""
+        literals: List[str] = []
+        i = 0
+        while i < len(value):
+            ch = value[i]
+            if ch == "(":
+                prefix = token.strip()
+                if prefix:
+                    stack.append(prefix)
+                token = ""
+                i += 1
+                continue
+            if ch == ")":
+                if token.strip():
+                    literals.append(self._combine_enum_parts(stack, token.strip()))
+                    token = ""
+                if stack:
+                    stack.pop()
+                i += 1
+                continue
+            if ch == ",":
+                if token.strip():
+                    literals.append(self._combine_enum_parts(stack, token.strip()))
+                    token = ""
+                i += 1
+                continue
+            token += ch
+            i += 1
+        if token.strip():
+            literals.append(self._combine_enum_parts(stack, token.strip()))
+        return [literal for literal in literals if literal]
+
+    @staticmethod
+    def _combine_enum_parts(stack: List[str], token: str) -> str:
+        parts = [part for part in stack if part]
+        clean_token = token.strip()
+        if clean_token:
+            parts.append(clean_token)
+        return ".".join(parts)
+
+    def _type_from_text(self, text: Optional[str]) -> Type:
+        if not text:
+            return Type(None)
+        value = text.strip()
+        if not value:
+            return Type(None)
+        upper = value.upper()
+
+        if value.startswith("(") and ")" in value:
+            return self._build_enumeration_type(value)
+
+        if upper.startswith("FORMAT"):
+            return self._parse_formatted_type(value)
+
+        if upper.startswith("ALLOF"):
+            base = value[len("ALLOF") :].strip()
+            return EnumTreeValueType(base)
+
+        if upper.startswith("OID"):
+            remainder = value[len("OID") :]
+            base_type = self._type_from_text(remainder)
+            return TextOIDType(base_type)
+
+        if upper.startswith("MTEXT") or upper.startswith("TEXT"):
+            return self._parse_text_type(value)
+
+        if upper.startswith("NAME"):
+            return TextType(kind="NAME")
+
+        if upper.startswith("URI"):
+            return TextType(kind="URI")
+
+        if upper.startswith("NUMERIC"):
+            range_text = value[len("NUMERIC") :]
+            minimum, maximum = self._split_range(range_text.strip("[]")) if range_text else (None, None)
+            return NumericType(name="NUMERIC", minimum=minimum, maximum=maximum)
+
+        if re.match(r"^-?\d", value):
+            minimum, maximum = self._split_range(value)
+            if minimum is not None or maximum is not None:
+                return NumericType(minimum=minimum, maximum=maximum)
+
+        if "REFERENCETO" in upper:
+            return self._parse_reference_type(value)
+
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*", value):
+            return TypeAlias(value)
+
+        return Type(value)
+
+    def _parse_text_type(self, text: str) -> TextType:
+        match = re.match(r"^(?P<kind>M?TEXT)(?:\*(?P<length>\d+))?$", text, flags=re.IGNORECASE)
+        if match:
+            kind = match.group("kind") or "TEXT"
+            length_text = match.group("length")
+            length = int(length_text) if length_text else None
+            normalized = kind.upper() != "MTEXT"
+            return TextType(kind=kind.upper(), max_length=length, normalized=normalized)
+        return TextType(kind=text.upper())
+
+    def _parse_numeric_type(self, text: str) -> NumericType:
+        minimum, maximum = self._split_range(text)
+        return NumericType(minimum=minimum, maximum=maximum)
+
+    def _split_range(self, text: str) -> tuple[Optional[str], Optional[str]]:
+        if not text:
+            return (None, None)
+        value = text.strip()
+        if not value:
+            return (None, None)
+        if ".." in value:
+            left, _, right = value.partition("..")
+            left = left.strip()
+            right = right.strip()
+            return (left or None, right or None)
+        value = value.strip()
+        return (value or None, value or None)
+
+    def _parse_formatted_type(self, text: str) -> Type:
+        upper = text.upper()
+        remainder = text[len("FORMAT") :]
+        if upper.startswith("FORMATBASEDON"):
+            rest = remainder[len("BASEDON") :]
+            base, _, picture = rest.partition("(")
+            base = base.strip()
+            picture = picture[:-1] if picture.endswith(")") else picture
+            return FormattedType(base_domain=base, picture=picture or None)
+        idx = 0
+        while idx < len(remainder) and (remainder[idx].isalnum() or remainder[idx] in "._"):
+            idx += 1
+        base_domain = remainder[:idx].strip()
+        range_text = remainder[idx:]
+        minimum = maximum = None
+        if range_text:
+            if ".." in range_text:
+                left, _, right = range_text.partition("..")
+                minimum = self._strip_quotes(left)
+                maximum = self._strip_quotes(right)
+            else:
+                minimum = self._strip_quotes(range_text)
+        return FormattedType(base_domain=base_domain, minimum=minimum, maximum=maximum)
+
+    def _parse_reference_type(self, text: str) -> ReferenceType:
+        upper = text.upper()
+        index = upper.find("REFERENCETO")
+        if index >= 0:
+            target = text[index + len("REFERENCETO") :].strip()
+            return ReferenceType(target=target)
+        return ReferenceType(target=text)
+
+    @staticmethod
+    def _strip_quotes(value: str) -> Optional[str]:
+        if not value:
+            return None
+        stripped = value.strip()
+        if stripped.startswith("\"") and stripped.endswith("\""):
+            return stripped[1:-1]
+        if stripped.startswith("'") and stripped.endswith("'"):
+            return stripped[1:-1]
+        return stripped or None
+
+    def _build_object_type_from_ctx(self, ctx) -> Type:
+        name = self._restricted_ref_name(ctx)
+        return ObjectType(target=name) if name else Type(None)
+
+    def _context_text(self, ctx) -> Optional[str]:
+        if ctx is None:
+            return None
+        if isinstance(ctx, list):
+            ctx = ctx[0] if ctx else None
+        if ctx is None:
+            return None
+        return ctx.getText()
 
     def _restricted_ref_name(self, ctx) -> Optional[str]:
         if ctx is None:

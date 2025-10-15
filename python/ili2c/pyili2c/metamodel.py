@@ -230,6 +230,72 @@ class Type(Element):
     def __init__(self, name: Optional[str]) -> None:
         super().__init__(name=name)
 
+    # ------------------------------------------------------------------
+    def getDisplayName(self) -> str:
+        name = self.getName()
+        return name if name else "Unknown"
+
+
+class TextType(Type):
+    def __init__(
+        self,
+        *,
+        kind: str,
+        max_length: Optional[int] = None,
+        normalized: bool = True,
+        name: Optional[str] = None,
+    ) -> None:
+        super().__init__(name=name or kind)
+        self._kind = kind
+        self._max_length = max_length
+        self._normalized = normalized
+
+    def getKind(self) -> str:
+        return self._kind
+
+    def getMaxLength(self) -> Optional[int]:
+        return self._max_length
+
+    def isNormalized(self) -> bool:
+        return self._normalized
+
+    def getDisplayName(self) -> str:
+        label = self._kind
+        if self._kind.upper() in {"TEXT", "MTEXT"} and self._max_length:
+            label = f"{label}*{self._max_length}"
+        return label
+
+
+class NumericType(Type):
+    def __init__(
+        self,
+        *,
+        minimum: Optional[str] = None,
+        maximum: Optional[str] = None,
+        name: Optional[str] = None,
+    ) -> None:
+        super().__init__(name=name)
+        self._minimum = minimum
+        self._maximum = maximum
+
+    def getMinimum(self) -> Optional[str]:
+        return self._minimum
+
+    def getMaximum(self) -> Optional[str]:
+        return self._maximum
+
+    def getDisplayName(self) -> str:
+        name = super().getName()
+        if name:
+            return name
+        if self._minimum is not None or self._maximum is not None:
+            left = self._minimum if self._minimum is not None else ""
+            right = self._maximum if self._maximum is not None else ""
+            if left and right:
+                return f"{left}..{right}"
+            return left or right or "NUMERIC"
+        return "NUMERIC"
+
 
 class EnumerationType(Type):
     def __init__(self, name: Optional[str], literals: Sequence[str]) -> None:
@@ -238,6 +304,109 @@ class EnumerationType(Type):
 
     def getLiterals(self) -> Sequence[str]:
         return tuple(self._literals)
+
+    def getDisplayName(self) -> str:
+        name = self.getName()
+        if name:
+            return name.split(".")[-1]
+        return ", ".join(self._literals) if self._literals else "Enumeration"
+
+
+class EnumTreeValueType(Type):
+    def __init__(self, base_domain: str, name: Optional[str] = None) -> None:
+        super().__init__(name=name)
+        self._base_domain = base_domain
+
+    def getBaseDomain(self) -> str:
+        return self._base_domain
+
+    def getDisplayName(self) -> str:
+        return self._base_domain.split(".")[-1] if self._base_domain else "Enumeration"
+
+
+class FormattedType(Type):
+    def __init__(
+        self,
+        *,
+        base_domain: str,
+        picture: Optional[str] = None,
+        minimum: Optional[str] = None,
+        maximum: Optional[str] = None,
+        name: Optional[str] = None,
+    ) -> None:
+        super().__init__(name=name)
+        self._base_domain = base_domain
+        self._picture = picture
+        self._minimum = minimum
+        self._maximum = maximum
+
+    def getBaseDomain(self) -> str:
+        return self._base_domain
+
+    def getPicture(self) -> Optional[str]:
+        return self._picture
+
+    def getMinimum(self) -> Optional[str]:
+        return self._minimum
+
+    def getMaximum(self) -> Optional[str]:
+        return self._maximum
+
+    def getDisplayName(self) -> str:
+        base = self._base_domain or self.getName()
+        if not base:
+            return "FORMAT"
+        return base.split(".")[-1]
+
+
+class TextOIDType(Type):
+    def __init__(self, oid_type: Type, name: Optional[str] = None) -> None:
+        super().__init__(name=name)
+        self._oid_type = oid_type
+        self._register_child(oid_type)
+
+    def getOIDType(self) -> Type:
+        return self._oid_type
+
+    def getDisplayName(self) -> str:
+        return f"OID {self._oid_type.getDisplayName()}".strip()
+
+
+class TypeAlias(Type):
+    def __init__(self, target: str) -> None:
+        super().__init__(name=target)
+        self._target = target
+
+    def getAliasing(self) -> str:
+        return self._target
+
+    def getDisplayName(self) -> str:
+        return self._target.split(".")[-1] if self._target else "Unknown"
+
+
+class ReferenceType(Type):
+    def __init__(self, target: str, name: Optional[str] = None) -> None:
+        super().__init__(name=name)
+        self._target = target
+
+    def getReferred(self) -> str:
+        return self._target
+
+    def getDisplayName(self) -> str:
+        target = self._target.split(".")[-1] if self._target else "Unknown"
+        return target
+
+
+class ObjectType(Type):
+    def __init__(self, target: str, name: Optional[str] = None) -> None:
+        super().__init__(name=name or target)
+        self._target = target
+
+    def getTarget(self) -> str:
+        return self._target
+
+    def getDisplayName(self) -> str:
+        return self._target.split(".")[-1] if self._target else "Unknown"
 
 
 class Cardinality:

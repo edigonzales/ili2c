@@ -3,7 +3,22 @@ from pathlib import Path
 
 import pytest
 
-from ili2c.pyili2c.metamodel import Constraint, Domain, Function, ListType, Table, Type
+from ili2c.pyili2c.metamodel import (
+    Constraint,
+    Domain,
+    EnumTreeValueType,
+    EnumerationType,
+    FormattedType,
+    Function,
+    ListType,
+    NumericType,
+    ReferenceType,
+    Table,
+    TextOIDType,
+    TextType,
+    Type,
+    TypeAlias,
+)
 from ili2c.pyili2c.parser import ParserSettings, parse
 from ili2c.ilirepository.cache import RepositoryCache
 
@@ -71,6 +86,86 @@ def test_parse_model_with_imports(tmp_path):
     class_b = next(c for c in topic_b.getClasses() if c.getName() == "ClassB")
     attr = class_b.getAttributes()[0]
     assert attr.getDomain().getName() == "ModelA.StructA"
+
+
+def test_parse_recognises_enhanced_types(tmp_path):
+    model_text = """INTERLIS 2.4;
+MODEL TypeModel =
+  DOMAIN DateFmt = FORMAT BASED ON INTERLIS.GregorianDate (Year ":" Month ":" Day);
+  DOMAIN Palette = (
+    rot (
+      hell,
+      dunkel
+    ),
+    blau
+  );
+  DOMAIN PaletteTree = ALL OF Palette;
+  TOPIC Main =
+    CLASS Target =
+      Code : TEXT*8;
+    END Target;
+    CLASS Example =
+      Inline : (rot (hell, dunkel), blau);
+      FreeText : MTEXT*9;
+      Number : 1..9;
+      Ref : REFERENCE TO TypeModel.Main.Target;
+      When : FORMAT DateFmt "2017:01:01" .. "2017:01:31";
+      PaletteRef : PaletteTree;
+      Id : OID TEXT*16;
+    END Example;
+  END Main;
+END TypeModel.
+"""
+
+    path = tmp_path / "typemodel.ili"
+    path.write_text(model_text, encoding="utf8")
+
+    td = parse(path)
+    model = td.find_model("TypeModel")
+    assert model is not None
+
+    palette_domain = next(d for d in model.getDomains() if d.getName() == "Palette")
+    assert isinstance(palette_domain.getType(), EnumerationType)
+    assert palette_domain.getType().getLiterals() == ("rot.hell", "rot.dunkel", "blau")
+
+    palette_tree = next(d for d in model.getDomains() if d.getName() == "PaletteTree")
+    assert isinstance(palette_tree.getType(), EnumTreeValueType)
+
+    topic = next(t for t in model.getTopics() if t.getName() == "Main")
+    example = next(c for c in topic.getClasses() if c.getName() == "Example")
+
+    inline = next(a for a in example.getAttributes() if a.getName() == "Inline")
+    assert isinstance(inline.getDomain(), EnumerationType)
+    assert inline.getDomain().getLiterals() == ("rot.hell", "rot.dunkel", "blau")
+
+    free_text = next(a for a in example.getAttributes() if a.getName() == "FreeText")
+    assert isinstance(free_text.getDomain(), TextType)
+    assert free_text.getDomain().getKind() == "MTEXT"
+    assert free_text.getDomain().getMaxLength() == 9
+
+    number_attr = next(a for a in example.getAttributes() if a.getName() == "Number")
+    assert isinstance(number_attr.getDomain(), NumericType)
+    assert number_attr.getDomain().getMinimum() == "1"
+    assert number_attr.getDomain().getMaximum() == "9"
+
+    ref_attr = next(a for a in example.getAttributes() if a.getName() == "Ref")
+    assert isinstance(ref_attr.getDomain(), ReferenceType)
+    assert ref_attr.getDomain().getReferred().endswith("Target")
+
+    when_attr = next(a for a in example.getAttributes() if a.getName() == "When")
+    assert isinstance(when_attr.getDomain(), FormattedType)
+    assert when_attr.getDomain().getBaseDomain() == "DateFmt"
+    assert when_attr.getDomain().getMinimum() == "2017:01:01"
+    assert when_attr.getDomain().getMaximum() == "2017:01:31"
+
+    palette_ref = next(a for a in example.getAttributes() if a.getName() == "PaletteRef")
+    assert isinstance(palette_ref.getDomain(), TypeAlias)
+    assert palette_ref.getDomain().getAliasing() == "PaletteTree"
+
+    oid_attr = next(a for a in example.getAttributes() if a.getName() == "Id")
+    assert isinstance(oid_attr.getDomain(), TextOIDType)
+    assert isinstance(oid_attr.getDomain().getOIDType(), TextType)
+    assert oid_attr.getDomain().getOIDType().getMaxLength() == 16
 
 
 def test_parse_missing_import_raises(tmp_path):
