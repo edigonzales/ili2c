@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from ili2c.pyili2c.metamodel import (
+    BlackboxType,
     Constraint,
     Domain,
     EnumTreeValueType,
@@ -100,6 +101,8 @@ MODEL TypeModel =
     blau
   );
   DOMAIN PaletteTree = ALL OF Palette;
+  DOMAIN BinaryBlob = BLACKBOX BINARY;
+  DOMAIN XmlBlob = BLACKBOX XML;
   TOPIC Main =
     CLASS Target =
       Code : TEXT*8;
@@ -112,6 +115,8 @@ MODEL TypeModel =
       When : FORMAT DateFmt "2017:01:01" .. "2017:01:31";
       PaletteRef : PaletteTree;
       Id : OID TEXT*16;
+      BinaryData : BLACKBOX BINARY;
+      XmlData : XmlBlob;
     END Example;
   END Main;
 END TypeModel.
@@ -166,6 +171,15 @@ END TypeModel.
     assert isinstance(oid_attr.getDomain(), TextOIDType)
     assert isinstance(oid_attr.getDomain().getOIDType(), TextType)
     assert oid_attr.getDomain().getOIDType().getMaxLength() == 16
+
+    binary_attr = next(a for a in example.getAttributes() if a.getName() == "BinaryData")
+    assert isinstance(binary_attr.getDomain(), BlackboxType)
+    assert binary_attr.getDomain().getKind() == "BINARY"
+    assert binary_attr.getDomain().getDisplayName() == "Blackbox Binary"
+
+    xml_attr = next(a for a in example.getAttributes() if a.getName() == "XmlData")
+    assert isinstance(xml_attr.getDomain(), TypeAlias)
+    assert xml_attr.getDomain().getAliasing() == "XmlBlob"
 
 
 def test_parse_missing_import_raises(tmp_path):

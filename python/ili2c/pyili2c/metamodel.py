@@ -297,6 +297,29 @@ class NumericType(Type):
         return "NUMERIC"
 
 
+class BlackboxType(Type):
+    """Representation of ``BLACKBOX`` types."""
+
+    KIND_XML = "XML"
+    KIND_BINARY = "BINARY"
+
+    def __init__(self, *, kind: str, name: Optional[str] = None) -> None:
+        kind_value = kind.upper()
+        super().__init__(name=name or f"BLACKBOX {kind_value}".strip())
+        self._kind = kind_value
+
+    def getKind(self) -> str:
+        return self._kind
+
+    def getDisplayName(self) -> str:
+        if self._kind == self.KIND_BINARY:
+            return "Blackbox Binary"
+        if self._kind == self.KIND_XML:
+            return "Blackbox Xml"
+        label = self._kind.title() if self._kind else ""
+        return f"Blackbox {label}".strip()
+
+
 class GeometryType(Type):
     def __init__(self, *, kind: str, definition: str, name: Optional[str] = None) -> None:
         super().__init__(name=name or kind.upper())
