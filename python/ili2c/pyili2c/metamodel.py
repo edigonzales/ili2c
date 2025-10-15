@@ -10,6 +10,7 @@ models.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Iterable, List, Optional, Sequence, Tuple, Type as TypingType
 
 
@@ -84,6 +85,7 @@ class TransferDescription(ContainerElement):
     def __init__(self) -> None:
         super().__init__(name=None)
         self._models: List[Model] = []
+        self._primary_source: Optional[Path] = None
 
     def add_model(self, model: "Model") -> None:
         self._models.append(model)
@@ -91,6 +93,32 @@ class TransferDescription(ContainerElement):
 
     def getModels(self) -> Sequence["Model"]:
         return tuple(self._models)
+
+    def setPrimarySource(self, source: Optional[Path]) -> None:
+        self._primary_source = source
+
+    def getModelsFromLastFile(self) -> Sequence["Model"]:
+        if not self._models:
+            return ()
+
+        last_model = self._models[-1]
+        source = getattr(last_model, "_source", None)
+        target_sources: List[Path] = []
+        if self._primary_source is not None:
+            target_sources.append(self._primary_source)
+        if isinstance(source, Path) and source not in target_sources:
+            target_sources.append(source)
+
+        for candidate in target_sources:
+            matches = [
+                model
+                for model in self._models
+                if getattr(model, "_source", None) == candidate
+            ]
+            if matches:
+                return tuple(matches)
+
+        return (last_model,)
 
     def find_model(self, name: str) -> Optional["Model"]:
         for model in self._models:

@@ -15,7 +15,7 @@ def test_render_simple_model_mermaid_output():
     expected = """classDiagram
   namespace SimpleModel__SimpleTopic {
     class SimpleModel.SimpleTopic.Building[\"Building\"] {
-      AddressRef[0..*] : List<SimpleModel.Address>
+      AddressRef[0..*] : Address
     }
   }
   class SimpleModel.Address[\"Address\"] {
@@ -52,7 +52,8 @@ END EnumModel.
     diagram = render(td)
 
     assert "class EnumModel.Color" in diagram
-    assert "red, blue, green" in diagram
+    assert "Shade[0..1] : Color" in diagram
+    assert "red, blue, green" not in diagram
 
 
 def test_testsuite_model_contains_inheritance_and_association():
