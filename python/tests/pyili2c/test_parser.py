@@ -68,6 +68,55 @@ def test_parse_simple_model():
     assert domain.getElementType().getName() == "SimpleModel.Address"
 
 
+def test_parse_model_with_unique_where_constraint():
+    td = parse(DATA_DIR / "TestSuite_mod-0.ili")
+
+    model = td.find_model("TestSuite")
+    assert model is not None
+
+    topic = next(t for t in model.getTopics() if t.getName() == "Bodenbedeckung")
+    table = next(c for c in topic.getClasses() if c.getName() == "GebaeudeArt3")
+
+    constraint = next(c for c in table.getConstraints() if c.expression.startswith("UNIQUEWHERE"))
+    assert "WHEREKlassifizierung==#A" in constraint.expression
+    assert constraint.expression.endswith("Art,ArtStandardID;")
+
+    parent_table = next(c for c in topic.getClasses() if c.getName() == "GebaeudeArt")
+    local_unique = next(c for c in parent_table.getConstraints() if c.expression.startswith("UNIQUE(LOCAL)"))
+    assert local_unique.expression == "UNIQUE(LOCAL)Code:Code;"
+
+    history = next(c for c in topic.getClasses() if c.getName() == "Geschichte")
+    plain_unique = next(c for c in history.getConstraints() if c.expression.startswith("UNIQUE"))
+    assert plain_unique.expression == "UNIQUEDossierNummer;"
+
+
+def test_parse_named_unique_where_constraint(tmp_path):
+    model_text = """INTERLIS 2.3;
+MODEL UniqueNamed =
+  TOPIC T =
+    CLASS Example =
+      Attr : TEXT;
+      Code : TEXT;
+    UNIQUE NamedConstraint WHERE Attr == \"foo\" : Code;
+    END Example;
+  END T;
+END UniqueNamed.
+"""
+
+    path = tmp_path / "unique_named.ili"
+    path.write_text(model_text, encoding="utf8")
+
+    td = parse(path)
+    model = td.find_model("UniqueNamed")
+    assert model is not None
+
+    topic = model.getTopics()[0]
+    table = topic.getClasses()[0]
+    constraint = table.getConstraints()[0]
+
+    assert constraint.expression.startswith("UNIQUENamedConstraintWHEREAttr==\"foo\":Code;")
+
+
 def test_parse_model_with_imports(tmp_path):
     for name in ["modelA.ili", "modelB.ili"]:
         (tmp_path / name).write_text((DATA_DIR / name).read_text(), encoding="utf8")
