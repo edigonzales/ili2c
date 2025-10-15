@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence
 
 from antlr4 import CommonTokenStream, FileStream
 
 from ..metamodel import (
+    Association,
+    AssociationEnd,
     Cardinality,
     Constraint,
     Domain,
@@ -22,6 +24,7 @@ from ..metamodel import (
     Topic,
     TransferDescription,
     Type,
+    Viewable,
 )
 from .generated.grammars_antlr4.InterlisLexer import InterlisLexer
 from .generated.grammars_antlr4.InterlisParserPy import InterlisParserPy
@@ -151,11 +154,15 @@ class _ModelBuilder:
     schema_version: Optional[str]
     context: _ParseContext
     source_path: Path
+    pending_extends: List[tuple[Viewable, str]] = field(default_factory=list)
+    active_model: Optional[Model] = None
 
     def build_model(self, ctx) -> Model:  # type: ignore[override]
         name_tokens = ctx.Name()
         name = name_tokens[0].getText() if name_tokens else ""
         model = Model(name=name, schema_language=self.schema_language, schema_version=self.schema_version)
+        self.active_model = model
+        self.context.models[name] = model
 
         for import_name in self._extract_imports(ctx):
             model.add_import(import_name)
@@ -181,6 +188,8 @@ class _ModelBuilder:
             topic = self._build_topic(topic_ctx)
             model.add_topic(topic)
 
+        self._resolve_pending_extends(model)
+        self.active_model = None
         return model
 
     # ------------------------------------------------------------------
@@ -208,7 +217,15 @@ class _ModelBuilder:
         types = ctx.iliType()
         for idx, name_token in enumerate(names):
             type_ctx = types[idx] if idx < len(types) else None
-            domain_type = self._build_type_from_ili(type_ctx) if type_ctx else Type(None)
+            enumeration_value = ctx.enumeration()
+            if isinstance(enumeration_value, list):
+                enumeration_value = enumeration_value[0] if enumeration_value else None
+            if type_ctx is None and enumeration_value is not None:
+                enum_ctx = enumeration_value
+                literals = [literal.getText() for literal in enum_ctx.enumElement()]
+                domain_type = EnumerationType(name=None, literals=literals)
+            else:
+                domain_type = self._build_type_from_ili(type_ctx) if type_ctx else Type(None)
             domain = Domain(name=name_token.getText(), domain_type=domain_type)
             domains.append(domain)
         return domains
@@ -244,6 +261,9 @@ class _ModelBuilder:
                 table = self._build_table(definition.structureDef(), kind="STRUCTURE")
                 table._identifiable = False
                 topic.add_structure(table)
+            elif definition.associationDef():
+                association = self._build_association(definition.associationDef())
+                topic.add_association(association)
         return topic
 
     def _build_table(self, ctx, *, kind: str) -> Table:
@@ -251,6 +271,18 @@ class _ModelBuilder:
         abstract = bool(ctx.ABSTRACT())
         identifiable = kind == "CLASS" and ctx.NO() is None
         table = Table(name=name, kind=kind, abstract=abstract, identifiable=identifiable)
+
+        ref_ctx = None
+        if hasattr(ctx, "classOrStructureRef"):
+            ref_ctx = ctx.classOrStructureRef()
+        if not ref_ctx and hasattr(ctx, "structureRef"):
+            ref_ctx = ctx.structureRef()
+        if isinstance(ref_ctx, list):
+            ref_ctx = ref_ctx[0] if ref_ctx else None
+        if ref_ctx is not None:
+            ref_name = ref_ctx.getText()
+            if ref_name:
+                self.pending_extends.append((table, ref_name))
 
         body = ctx.classOrStructureDef()
         if body:
@@ -285,6 +317,100 @@ class _ModelBuilder:
 
         return Constraint(name=name, expression=expression_text, mandatory=mandatory)
 
+    def _resolve_pending_extends(self, model: Model) -> None:
+        for viewable, ref_name in list(self.pending_extends):
+            target = self._lookup_viewable(ref_name, model)
+            if target is not None:
+                if isinstance(viewable, Table):
+                    viewable.setExtending(target)  # type: ignore[arg-type]
+                elif isinstance(viewable, Association):
+                    viewable.setExtending(target)  # type: ignore[arg-type]
+        self.pending_extends.clear()
+
+    def _lookup_viewable(self, ref_name: str, default_model: Model) -> Optional[Viewable]:
+        parts = [part for part in ref_name.split(".") if part]
+        if not parts:
+            return None
+
+        model = default_model
+        if parts[0] in self.context.models:
+            model = self.context.models[parts[0]]
+            parts = parts[1:]
+        elif parts[0] == default_model.getName():
+            parts = parts[1:]
+
+        topic: Optional[Topic] = None
+        if parts:
+            for candidate in model.getTopics():
+                if candidate.getName() == parts[0]:
+                    topic = candidate
+                    parts = parts[1:]
+                    break
+
+        if not parts:
+            return None
+
+        viewable_name = parts[0]
+        candidates: List[Viewable] = []
+        if topic is not None:
+            candidates.extend(topic.getClasses())
+            candidates.extend(topic.getStructures())
+        else:
+            candidates.extend(model.getTables())
+            for candidate_topic in model.getTopics():
+                candidates.extend(candidate_topic.getClasses())
+                candidates.extend(candidate_topic.getStructures())
+
+        for candidate in candidates:
+            if candidate.getName() == viewable_name:
+                return candidate
+        return None
+
+    def _build_association(self, ctx) -> Association:
+        name_tokens = ctx.Name() or []
+        name = name_tokens[0].getText() if name_tokens else None
+        association = Association(name=name)
+
+        for role_ctx in ctx.roleDef() or []:
+            role_name = role_ctx.Name().getText()
+            refs = role_ctx.restrictedClassOrAssRef()
+            if isinstance(refs, list):
+                refs = refs[-1] if refs else None
+            target_name = refs.getText() if refs is not None else None
+            target_type = Type(target_name)
+            cardinality = self._build_cardinality(role_ctx.cardinality()) or Cardinality(0, 1)
+            connector = self._extract_role_connector(role_ctx)
+            is_external = bool(role_ctx.EXTERNAL())
+            end = AssociationEnd(
+                role_name,
+                target_type,
+                cardinality=cardinality,
+                role_kind=connector,
+                is_external=is_external,
+            )
+            association.add_end(end)
+
+        for attr_ctx in ctx.attributeDef() or []:
+            attribute = self._build_attribute(attr_ctx)
+            association.add_attribute(attribute)
+
+        for constraint_ctx in ctx.constraintDef() or []:
+            constraint = self._build_constraint(constraint_ctx)
+            association.add_constraint(constraint)
+
+        return association
+
+    def _extract_role_connector(self, ctx) -> str:
+        minus_tokens = ctx.MINUS() or []
+        connector = "".join(token.getText() for token in minus_tokens if hasattr(token, "getText"))
+        lt_token = ctx.LT()
+        gt_token = ctx.GT()
+        if lt_token:
+            connector += "<"
+        if gt_token:
+            connector += ">"
+        return connector or "--"
+
     # ------------------------------------------------------------------
     def _build_attr_type_def(self, ctx) -> Type:
         if ctx is None:
@@ -301,7 +427,7 @@ class _ModelBuilder:
         if ctx.numeric():
             return Type(ctx.numeric().getText())
         if ctx.enumeration():
-            literals = [literal.getText() for literal in ctx.enumeration().enumerationElement()]
+            literals = [literal.getText() for literal in ctx.enumeration().enumElement()]
             return EnumerationType(name=None, literals=literals)
         if ctx.NUMERIC():
             return Type("NUMERIC")
@@ -321,7 +447,14 @@ class _ModelBuilder:
     def _build_type_from_ili(self, ctx) -> Type:
         if ctx is None:
             return Type(None)
-        return Type(ctx.getText())
+        text = ctx.getText()
+        if text.startswith("(") and text.endswith(")"):
+            inner = text[1:-1]
+            if inner:
+                literals = [literal for literal in inner.replace(" ", "").split(",") if literal]
+                if literals:
+                    return EnumerationType(name=None, literals=literals)
+        return Type(text)
 
     def _build_cardinality(self, ctx) -> Optional[Cardinality]:
         if ctx is None:

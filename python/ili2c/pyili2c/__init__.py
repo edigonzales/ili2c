@@ -1,3 +1,3 @@
-"""Python implementation of the INTERLIS metamodel and parser."""
+"""Python implementation of the INTERLIS metamodel, parser and helpers."""
 
-__all__ = ["metamodel", "parser"]
+__all__ = ["mermaid", "metamodel", "parser"]

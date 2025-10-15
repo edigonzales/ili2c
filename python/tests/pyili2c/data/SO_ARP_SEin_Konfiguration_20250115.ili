@@ -9,39 +9,44 @@ INTERLIS 2.3;
 !!@ furtherInformation=http://geo.so.ch/models/ARP/SO_ARP_SEin_Konfiguration_20250115.uml
 !!@ shortDescription="Datenmodell für die (Teil-)Konfiguration der SEin-App"
 !!@ title="SEin-App Konfiguration"
-!!@ technicalContact=mailto:agi@bd.so.ch
-MODEL SO_ARP_SEin_Konfiguration_20250115 (de)
+!!@ technicalContact=mailto:agi@bd.so.ch.
+MODEL SO_ARP_SEin_Konfiguration_20250115 (de) 
   AT "https://arp.so.ch"
   VERSION "2025-01-15"
   =
-  IMPORTS GeometryCHLV95_V1, Text, Foo; 
-
+  IMPORTS GeometryCHLV95_V1, Text;
+  
   DOMAIN
-    Status_Geschaeft = (
-      foo,
+    Status_Geschaeft = ( 
+      fooooo,
       bar
-    );
+    ); 
 
   CLASS MyBase (ABSTRACT) =
     gaga : TEXT*20;
     aEnum : SO_ARP_SEin_Konfiguration_20250115.Status_Geschaeft;
     aGeometry : GeometryCHLV95_V1.MultiSurface;
-    geoma : GeometryCHLV95_V1.MultiDirectedLine;
+    geomaa : GeometryCHLV95_V1.MultiDirectedLine;
     geomb : GeometryCHLV95_V1.MultiLine;
     geomc : GeometryCHLV95_V1.Surface;
     geomd : GeometryCHLV95_V1.MultiLine;
+    geome : GeometryCHLV95_V1.MultiSurface; 
+    geom2 : GeometryCHLV95_V1.MultiSurface; 
     attr : TEXT*1000;
   END MyBase;
 
-  CLASS foo (ABSTRACT) =
-
-
-    geoma : GeometryCHLV95_V1.Coord3;
+  CLASS fooooo (ABSTRACT) =
+    attr1 : TEXT;
+    geoma : GeometryCHLV95_V1.Coord3;  
     geomb : GeometryCHLV95_V1.Area;
-  END foo;
+    geomc : GeometryCHLV95_V1.Coord3;   
+  END fooooo;
 
-  CLASS Gemeinde (ABSTRACT) EXTENDS SO_ARP_SEin_Konfiguration_20250115.MyBase =
-    /** Name der Gemeinde (gemäss amtlichem Verzeichnis)
+  CLASS asdf (ABSTRACT) =  
+  END asdf;
+
+  CLASS GemeindeXXXX (ABSTRACT) EXTENDS SO_ARP_SEin_Konfiguration_20250115.MyBase =
+    /** Name der GemeindeXXXX (gemäss amtlichem Verzeichnis)
      */
     Name : MANDATORY TEXT*500;
     /** Offizielle Gemeindenummer
@@ -53,21 +58,21 @@ MODEL SO_ARP_SEin_Konfiguration_20250115 (de)
     /** Name des Bezirks
      */
     Bezirk : MANDATORY TEXT*50;
-  END Gemeinde;
+  END GemeindeXXXX;
 
   STRUCTURE Gruppe =
     /** Name der Themengruppe
-     */
-    Name : MANDATORY TEXT*500;
+     */ 
+    Name : MANDATORY TEXT*500; 
   END Gruppe;
 
   /** TODO: unique constraint Name und Gruppen-Name.
    */
   STRUCTURE Thema =
-    /** Titel (Anzeigename) des Layers / der Layer.
+    /** Titel (Anzeigename) des Layers / der Layer.  
      */
     Name : MANDATORY TEXT*500;
-    /** Layer-ID (Name) des Layers gemäss Web GIS Client resp. GetCapabilities.
+    /** Layer-ID (Name) des Layers gemäss Web GIS Client resp. GetCapabilities.    lkj lkj lkj lkj lkj lkj lkj    asdf ölkj öj ölkj lkj lkj lkj lkj lkj lkj lkj lkj lkj lkj lkj lkj lkj lkj lkj lkj lkj lk
      */
     LayerId : TEXT*500;
     /** Transparenz in Prozent
@@ -84,20 +89,20 @@ MODEL SO_ARP_SEin_Konfiguration_20250115 (de)
     /** Link zum Objektblatt oder zu einer Webseite etc.
      */
     Link : INTERLIS.URI;
-  END Objektinfo;
+  END Objektinfo; 
 
   /** Achtung: Das funktioniert solange es immer eine Objektinfo gibt.
-   * Dann weiss man, dass die Gemeinde von diesem Thema betroffen ist.
+   * Dann weiss man, dass die GemeindeXXXX von diesem Thema betroffen ist.
    * Scheint gemässt Liste jetzt so zu sein ("keine Geodaten").
-   * Sonst bräuchte es noch eine Assoziation zw. Thema und Gemeinde
+   * Sonst bräuchte es noch eine Assoziation zw. Thema und GemeindeXXXX
    * und zusätzlichen Umbaulogik von Grundlagen zu Auswertung.
    */
   TOPIC Grundlagen =
 
-    CLASS Gemeinde EXTENDS SO_ARP_SEin_Konfiguration_20250115.Gemeinde =
+    CLASS GemeindeYYYY EXTENDS SO_ARP_SEin_Konfiguration_20250115.GemeindeXXXX =
       UNIQUE Name;
       UNIQUE BFSNr;
-    END Gemeinde;
+    END GemeindeYYYY;
 
     CLASS Gruppe EXTENDS SO_ARP_SEin_Konfiguration_20250115.Gruppe =
     END Gruppe;
@@ -114,7 +119,7 @@ MODEL SO_ARP_SEin_Konfiguration_20250115 (de)
 
     ASSOCIATION Gemeinde_Objektinfo =
       Objektinfo_R -- {0..*} SO_ARP_SEin_Konfiguration_20250115.Grundlagen.Objektinfo;
-      Gemeinde_R -- {0..*} SO_ARP_SEin_Konfiguration_20250115.Grundlagen.Gemeinde;
+      Gemeinde_R -- {0..*} SO_ARP_SEin_Konfiguration_20250115.Grundlagen.GemeindeYYYY;
     END Gemeinde_Objektinfo;
 
     ASSOCIATION Gruppe_Thema =
@@ -132,17 +137,18 @@ MODEL SO_ARP_SEin_Konfiguration_20250115 (de)
   TOPIC Auswertung =
     DEPENDS ON SO_ARP_SEin_Konfiguration_20250115.Grundlagen;
 
-    CLASS foo =
+    CLASS fooooo =
       attr : SO_ARP_SEin_Konfiguration_20250115.Status_Geschaeft;
       geom : GeometryCHLV95_V1.MultiSurface;
-    END foo;
+      myenum : (rot, gruen);
+    END fooooo;
 
     STRUCTURE Thema EXTENDS SO_ARP_SEin_Konfiguration_20250115.Thema =
       /** Thema erweitert mit Objektinfos.
        */
       !!@ ili2db.mapping=JSON
       Objektinfos : BAG {0..*} OF SO_ARP_SEin_Konfiguration_20250115.Objektinfo;
-      /** Ist Gemeinde von diesem Thema betroffen?
+      /** Ist GemeindeXXXX von diesem Thema betroffen?
        */
       ist_betroffen : BOOLEAN;
     END Thema;
@@ -154,7 +160,7 @@ MODEL SO_ARP_SEin_Konfiguration_20250115 (de)
       Themen : BAG {1..*} OF SO_ARP_SEin_Konfiguration_20250115.Auswertung.Thema;
     END Gruppe;
 
-    CLASS Gemeinde EXTENDS SO_ARP_SEin_Konfiguration_20250115.Gemeinde =
+    CLASS Gemeinde EXTENDS SO_ARP_SEin_Konfiguration_20250115.GemeindeXXXX =
       /** Ausdehnung / Bounding Box
        */
       BoundingBox : MANDATORY TEXT*200;
@@ -172,7 +178,7 @@ MODEL SO_ARP_SEin_Konfiguration_20250115 (de)
 
     ASSOCIATION Fubar__Gemeinde =
       Fubar_R -- {0..*} SO_ARP_SEin_Konfiguration_20250115.Auswertung.Fubar;
-      Gemeinde_R (EXTERNAL) -- {0..*} SO_ARP_SEin_Konfiguration_20250115.Grundlagen.Gemeinde;
+      Gemeinde_R (EXTERNAL) -- {0..*} SO_ARP_SEin_Konfiguration_20250115.Grundlagen.GemeindeYYYY;
     END Fubar__Gemeinde;
 
   END Auswertung;
