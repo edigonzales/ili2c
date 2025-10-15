@@ -110,6 +110,7 @@ class Model(ContainerElement):
         self._domains: List[Domain] = []
         self._functions: List[Function] = []
         self._tables: List[Table] = []
+        self._associations: List["Association"] = []
         self._imports: List[str] = []
 
     # ------------------------------------------------------------------
@@ -139,6 +140,22 @@ class Model(ContainerElement):
         self._tables.append(table)
         return self.add_element(table)  # type: ignore[return-value]
 
+    def getTables(self) -> Sequence["Table"]:
+        return tuple(self._tables)
+
+    def getDomains(self) -> Sequence[Domain]:
+        return tuple(self._domains)
+
+    def getFunctions(self) -> Sequence[Function]:
+        return tuple(self._functions)
+
+    def add_association(self, association: "Association") -> "Association":
+        self._associations.append(association)
+        return self.add_element(association)  # type: ignore[return-value]
+
+    def getAssociations(self) -> Sequence["Association"]:
+        return tuple(self._associations)
+
     def elements_of_type(self, element_type: TypingType[Element]) -> List[Element]:  # noqa: D401
         return super().elements_of_type(element_type)
 
@@ -155,6 +172,7 @@ class Topic(ContainerElement):
         super().__init__(name=name)
         self._classes: List[Table] = []
         self._structures: List[Table] = []
+        self._associations: List["Association"] = []
 
     def add_class(self, table: "Table") -> "Table":
         self._classes.append(table)
@@ -166,6 +184,16 @@ class Topic(ContainerElement):
 
     def getClasses(self) -> Sequence["Table"]:
         return tuple(self._classes)
+
+    def getStructures(self) -> Sequence["Table"]:
+        return tuple(self._structures)
+
+    def add_association(self, association: "Association") -> "Association":
+        self._associations.append(association)
+        return self.add_element(association)  # type: ignore[return-value]
+
+    def getAssociations(self) -> Sequence["Association"]:
+        return tuple(self._associations)
 
 
 class Type(Element):
@@ -282,6 +310,11 @@ class Attribute(Element):
     def isMandatory(self) -> bool:
         return self._mandatory
 
+    def getCardinality(self) -> Cardinality:
+        if isinstance(self._domain, ListType):
+            return self._domain.getCardinality()
+        return Cardinality(1, 1) if self._mandatory else Cardinality(0, 1)
+
 
 class Constraint(Element):
     def __init__(self, name: Optional[str], expression: str, *, mandatory: bool = False) -> None:
@@ -345,4 +378,70 @@ class Table(Viewable):
 
     def getKind(self) -> str:
         return self._kind
+
+
+class Association(ContainerElement):
+    def __init__(self, name: Optional[str]) -> None:
+        super().__init__(name=name)
+        self._ends: List["AssociationEnd"] = []
+        self._attributes: List[Attribute] = []
+        self._constraints: List[Constraint] = []
+        self._extending: Optional["Association"] = None
+
+    def add_end(self, end: "AssociationEnd") -> "AssociationEnd":
+        self._ends.append(end)
+        return self.add_element(end)  # type: ignore[return-value]
+
+    def getEnds(self) -> Sequence["AssociationEnd"]:
+        return tuple(self._ends)
+
+    def add_attribute(self, attribute: Attribute) -> Attribute:
+        self._attributes.append(attribute)
+        return self.add_element(attribute)  # type: ignore[return-value]
+
+    def getAttributes(self) -> Sequence[Attribute]:
+        return tuple(self._attributes)
+
+    def add_constraint(self, constraint: Constraint) -> Constraint:
+        self._constraints.append(constraint)
+        return self.add_element(constraint)  # type: ignore[return-value]
+
+    def getConstraints(self) -> Sequence[Constraint]:
+        return tuple(self._constraints)
+
+    def setExtending(self, parent: "Association") -> None:
+        self._extending = parent
+
+    def getExtending(self) -> Optional["Association"]:
+        return self._extending
+
+
+class AssociationEnd(Element):
+    def __init__(
+        self,
+        name: str,
+        target: Type,
+        *,
+        cardinality: Optional[Cardinality] = None,
+        role_kind: str = "--",
+        is_external: bool = False,
+    ) -> None:
+        super().__init__(name=name)
+        self._target = target
+        self._cardinality = cardinality or Cardinality(0, 1)
+        self._role_kind = role_kind or "--"
+        self._is_external = is_external
+        self._register_child(target)
+
+    def getTarget(self) -> Type:
+        return self._target
+
+    def getCardinality(self) -> Cardinality:
+        return self._cardinality
+
+    def getRoleKind(self) -> str:
+        return self._role_kind
+
+    def isExternal(self) -> bool:
+        return self._is_external
 
