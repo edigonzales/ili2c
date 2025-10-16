@@ -90,6 +90,28 @@ def test_parse_model_with_unique_where_constraint():
     assert plain_unique.expression == "UNIQUEDossierNummer;"
 
 
+def test_parse_domain_enumerations_and_all_of():
+    td = parse(DATA_DIR / "TestSuite_mod-0.ili")
+
+    model = td.find_model("TestSuite")
+    assert model is not None
+
+    farbe = next(d for d in model.getDomains() if d.getName() == "Farbe")
+    farbe_type = farbe.getType()
+    assert isinstance(farbe_type, EnumerationType)
+    assert farbe_type.getLiterals() == ("rot.dunkel", "rot.hell", "gruen", "blau")
+
+    alle_farben = next(d for d in model.getDomains() if d.getName() == "AlleFarben")
+    alle_farben_type = alle_farben.getType()
+    assert isinstance(alle_farben_type, EnumTreeValueType)
+    assert alle_farben_type.getBaseDomain() == "Farbe"
+
+    datum = next(d for d in model.getDomains() if d.getName() == "Datum")
+    datum_type = datum.getType()
+    assert isinstance(datum_type, FormattedType)
+    assert datum_type.getBaseDomain() == "INTERLIS.GregorianDate"
+
+
 def test_parse_named_unique_where_constraint(tmp_path):
     model_text = """INTERLIS 2.3;
 MODEL UniqueNamed =

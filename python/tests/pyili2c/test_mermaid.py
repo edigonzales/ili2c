@@ -67,6 +67,17 @@ def test_testsuite_model_contains_inheritance_and_association():
     )
 
 
+def test_testsuite_model_renders_enumeration_domain_only():
+    td = parse(DATA_DIR / "TestSuite_mod-0.ili")
+
+    diagram = render(td)
+
+    assert "class TestSuite.Farbe" in diagram
+    assert "  <<Enumeration>>" in diagram
+    assert "    rot.dunkel" in diagram
+    assert "class TestSuite.Datum" not in diagram
+
+
 def test_so_arp_model_diagram_has_expected_relationships():
     td = parse(DATA_DIR / "SO_ARP_SEin_Konfiguration_20250115.ili")
 
