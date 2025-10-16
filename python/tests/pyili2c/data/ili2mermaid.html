@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>INTERLIS (.ili) → Mermaid (Pyodide + ili2c-python from TestPyPI)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Mermaid -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <!-- Pyodide -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js"></script>
+  <!-- SVG Pan & Zoom -->
+  <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+  <style>
+    :root{
+      --bg:#ffffff;
+      --card:#ffffff;
+      --ink:#1f2937;        /* slate-800 */
+      --muted:#6b7280;      /* gray-500 */
+      --border:#e5e7eb;     /* gray-200 */
+      --accent:#2563eb;     /* blue-600 */
+      --accent-weak:#dbeafe;/* blue-100 */
+      --success:#16a34a;    /* green-600 */
+      --warn:#b91c1c;       /* red-700 */
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      --radius:14px;
+    }
+    *{ box-sizing:border-box }
+    body{
+      font-family: system-ui,-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      margin:0; padding:24px;
+      background:var(--bg); color:var(--ink);
+      line-height:1.45;
+    }
+    h1{ font-size:1.25rem; margin:0 0 12px }
+    h2{ font-size:1rem; margin:0 0 12px }
+    .bar{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .status{
+      font-family:var(--mono);
+      background: #f8fafc; /* slate-50 */
+      border:1px solid var(--border);
+      padding:10px 12px; border-radius: var(--radius);
+      color: var(--ink);
+    }
+    .dropzone{
+      border:2px dashed var(--accent);
+      border-radius: var(--radius);
+      padding:28px; text-align:center; color:var(--ink);
+      margin:16px 0; transition:.15s border-color ease, .15s background-color ease;
+      background:#fafafa;
+    }
+    .dropzone.dragover{ border-color:var(--success); background:#f0fdf4 }
+    .muted{ color:var(--muted) }
+    .grid{ display:grid; gap:16px; grid-template-columns:1fr } /* base: single column */
+    /* at large screens, only use 2 cols when class 'two-cols' is present */
+    @media (min-width:1100px){ .grid.two-cols{ grid-template-columns:1fr 1fr } }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      padding:16px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    }
+    textarea{
+      width:100%; height:420px;
+      background:#fff; color:var(--ink);
+      border:1px solid var(--border); border-radius:12px; padding:12px; resize:vertical;
+      font-family: var(--mono);
+    }
+    button{
+      background:var(--accent); color:#fff; border:none; padding:10px 14px;
+      border-radius:12px; cursor:pointer;
+      box-shadow: 0 1px 1px rgba(0,0,0,.05);
+    }
+    button.secondary{
+      background: transparent; color: var(--accent);
+      border:1px solid var(--accent);
+    }
+    button:disabled{ opacity:.6; cursor:not-allowed }
+    .footer{ color:var(--muted); font-size:.95rem; margin-top:18px }
+    .mermaid-wrap{ overflow:auto; min-height:120px }
+    .pill{
+      display:inline-block; padding:4px 8px; border-radius:9999px;
+      background:var(--accent-weak); color:var(--accent); font-size:.85rem;
+      border:1px solid var(--border)
+    }
+    .hidden{ display:none !important }
+    /* Keep svg controls readable */
+    .svg-pan-zoom_control{ border-radius:10px }
+  </style>
+</head>
+<body>
+  <h1>INTERLIS (.ili) → Mermaid (in the browser)</h1>
+  <div class="bar">
+    <div class="status" id="status">Loading Pyodide…</div>
+    <span class="pill" title="Python runs via Pyodide">Pyodide</span>
+    <span class="pill" title="Diagram renderer">Mermaid</span>
+    <button id="btn-rerender" class="secondary" disabled>Re-render Mermaid</button>
+    <button id="btn-toggle-code" class="secondary" aria-expanded="true">Hide Mermaid code</button>
+  </div>
+
+  <div id="drop" class="dropzone" role="button" aria-label="Drop an .ili file or click to choose">
+    <strong>Drop a .ili file here</strong><br/>
+    <span class="muted">…or click to choose a file</span>
+    <input id="file-input" type="file" accept=".ili" style="display:none" />
+  </div>
+
+  <div class="grid two-cols" id="grid">
+    <div class="card">
+      <h2>Mermaid preview</h2>
+      <div id="diagram" class="mermaid-wrap">
+        <div class="muted">No diagram yet.</div>
+      </div>
+      <div class="footer muted">Tip: scroll to zoom, drag to pan, or use the on-SVG controls.</div>
+    </div>
+
+    <div class="card" id="code-card">
+      <h2>Mermaid source</h2>
+      <textarea id="mermaid-src" spellcheck="false" placeholder="Mermaid code will appear here…" readonly></textarea>
+      <div class="footer" id="meta"></div>
+    </div>
+  </div>
+
+  <script>
+    // Mermaid config
+    mermaid.initialize({ startOnLoad: false, securityLevel: "loose" });
+
+    const statusEl = document.getElementById('status');
+    const dropEl = document.getElementById('drop');
+    const fileInput = document.getElementById('file-input');
+    const diagramEl = document.getElementById('diagram');
+    const mermaidSrc = document.getElementById('mermaid-src');
+    const metaEl = document.getElementById('meta');
+    const btnRerender = document.getElementById('btn-rerender');
+    const btnToggleCode = document.getElementById('btn-toggle-code');
+    const codeCard = document.getElementById('code-card');
+    const grid = document.getElementById('grid');
+
+    let pyodide;
+    let ready = false;
+    let panInstance = null;
+
+    const setStatus = (msg) => statusEl.textContent = msg;
+
+    // Initialize Pyodide + micropip + ili2c-python (from PyPI)
+    (async function init() {
+      try {
+        setStatus('Loading Pyodide runtime…');
+        pyodide = await loadPyodide({ stdout: t => console.log(t), stderr: t => console.error(t) });
+
+        setStatus('Installing micropip…');
+        await pyodide.loadPackage('micropip');
+        const micropip = pyodide.pyimport('micropip');
+
+        setStatus('Installing ili2c-python from PyPI …');
+        await micropip.install(['pyodide-http', 'ili2c-python==0.1.19']);
+
+        pyodide.runPython(`
+import pyodide_http
+pyodide_http.patch_all()
+from pathlib import Path
+from ili2c.pyili2c.parser import parse
+from ili2c.pyili2c.mermaid import render
+`);
+        ready = true;
+        setStatus('Ready — drop an .ili file to parse.');
+        btnRerender.disabled = false;
+      } catch (err) {
+        console.error(err);
+        setStatus('Failed to initialize. Open the console for details.');
+      }
+    })();
+
+    // --- Zoom/Pan helper (re-init on each render) ---
+    function initPanZoom() {
+      if (panInstance && typeof panInstance.destroy === 'function') {
+        try { panInstance.destroy(); } catch {}
+        panInstance = null;
+      }
+      const svg = diagramEl.querySelector('svg');
+      if (!svg) return;
+
+      // Make the SVG responsive
+      svg.removeAttribute('width');
+      svg.removeAttribute('height');
+      svg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
+      svg.style.width = '100%';
+      svg.style.height = '80vh';
+      svg.style.display = 'block';
+
+      panInstance = svgPanZoom(svg, {
+        controlIconsEnabled: true,
+        fit: true,
+        center: true,
+        minZoom: 0.25,
+        maxZoom: 20,
+        zoomScaleSensitivity: 0.4,
+        panEnabled: true,
+        dblClickZoomEnabled: true,
+        preventMouseEventsDefault: true
+      });
+    }
+
+    // After layout changes (like showing/hiding the code panel), refit the SVG
+    function refitPanZoom() {
+      if (!panInstance) return;
+      // Let the browser apply the new layout first
+      requestAnimationFrame(() => {
+        try {
+          panInstance.resize(); // inform about container size changes
+          panInstance.fit();
+          panInstance.center();
+        } catch(e) { console.warn(e); }
+      });
+    }
+
+    // Drag & drop wiring
+    ['dragenter','dragover'].forEach(evt =>
+      dropEl.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropEl.classList.add('dragover'); })
+    );
+    ['dragleave','drop'].forEach(evt =>
+      dropEl.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropEl.classList.remove('dragover'); })
+    );
+
+    dropEl.addEventListener('click', ()=> fileInput.click());
+    fileInput.addEventListener('change', e => {
+      const f = e.target.files?.[0];
+      if (f) handleFile(f);
+      fileInput.value = '';
+    });
+
+    dropEl.addEventListener('drop', e => {
+      const f = e.dataTransfer.files?.[0];
+      if (f) handleFile(f);
+    });
+
+    async function handleFile(file) {
+      if (!ready) return;
+      if (!file.name.toLowerCase().endsWith('.ili')) {
+        setStatus('Please provide a .ili file.');
+        return;
+      }
+      setStatus(`Reading ${file.name}…`);
+      const buf = new Uint8Array(await file.arrayBuffer());
+
+      try {
+        // Write to Pyodide FS
+        const vpath = '/tmp/upload.ili';
+        pyodide.FS.writeFile(vpath, buf);
+
+        setStatus('Parsing with ili2c-python…');
+        const result = pyodide.runPython(`
+from pathlib import Path
+from ili2c.pyili2c.parser import ParserSettings, parse
+from ili2c.pyili2c.mermaid import render
+
+settings = ParserSettings()
+settings.set_ilidirs("%ILI_DIR;https://geo.so.ch/models;https://geo.so.ch/models/mirror/interlis.ch/;https://geo.so.ch/models/mirror/geoadmin/")
+
+p = Path("/tmp/upload.ili")
+td = parse(p, settings=settings)
+{"count": len(td.getModels()), "mermaid": render(td)}
+`);
+        const out = result.toJs ? result.toJs() : result;
+        const code = String(out.mermaid || '').trim();
+        const count = out.count ?? 0;
+
+        if (!code) {
+          setStatus('Parsed, but Mermaid output was empty.');
+          mermaidSrc.value = '';
+          diagramEl.innerHTML = '<div class="muted">No diagram produced.</div>';
+          return;
+        }
+
+        mermaidSrc.value = code;
+        metaEl.textContent = `Parsed ${count} model${count===1?'':'s'} from “${file.name}”.`;
+
+        setStatus('Rendering Mermaid…');
+        const { svg } = await mermaid.render('ili2c-diagram', code);
+        diagramEl.innerHTML = svg;
+
+        initPanZoom();
+        setStatus(`Done — parsed ${count} model${count===1?'':'s'}.`);
+      } catch (err) {
+        console.error(err);
+        setStatus('Error while parsing or rendering. See console for details.');
+      }
+    }
+
+    btnRerender.addEventListener('click', async () => {
+      const code = mermaidSrc.value.trim();
+      if (!code) return;
+      try {
+        setStatus('Re-rendering with Mermaid…');
+        const { svg } = await mermaid.render('ili2c-diagram', code);
+        diagramEl.innerHTML = svg;
+        initPanZoom();
+        setStatus('Re-render complete.');
+      } catch (e) {
+        console.error(e);
+        setStatus('Mermaid failed to render. Check console.');
+      }
+    });
+
+    // Show/Hide Mermaid code panel + expand/collapse layout
+    btnToggleCode.addEventListener('click', () => {
+      const hidden = codeCard.classList.toggle('hidden');
+      // Switch between two columns (code visible) and one column (code hidden)
+      if (hidden) {
+        grid.classList.remove('two-cols'); // go full width
+      } else {
+        grid.classList.add('two-cols');    // restore two columns
+      }
+      btnToggleCode.textContent = hidden ? 'Show Mermaid code' : 'Hide Mermaid code';
+      btnToggleCode.setAttribute('aria-expanded', String(!hidden));
+
+      // Refit pan/zoom to new container width
+      refitPanZoom();
+    });
+  </script>
+
+  <div class="footer">
+    Using the <strong>ili2c-python</strong> package from <code>pypi.org</code> (v0.1.19), rendered with Mermaid. Zoom/pan via <code>svg-pan-zoom</code>.
+  </div>
+</body>
+</html>
