@@ -9,6 +9,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 from urllib.parse import urlparse
 
 from antlr4 import CommonTokenStream, InputStream
+from antlr4.tree.Tree import TerminalNodeImpl
 
 from ..metamodel import (
     AreaType,
@@ -476,26 +477,91 @@ class _ModelBuilder:
     # ------------------------------------------------------------------
     def _build_domains(self, ctx) -> List[Domain]:
         domains: List[Domain] = []
-        names = ctx.Name()
-        types = ctx.iliType()
-        for idx, name_token in enumerate(names):
-            type_ctx = types[idx] if idx < len(types) else None
-            enumeration_value = ctx.enumeration()
-            if isinstance(enumeration_value, list):
-                enumeration_value = enumeration_value[0] if enumeration_value else None
+        children = list(ctx.getChildren())
 
-            if type_ctx is None and enumeration_value is not None:
-                enum_text = enumeration_value.getText()
-                domain_type = self._build_enumeration_type(
-                    enum_text,
-                    name=name_token.getText(),
-                )
+        idx = 0
+        while idx < len(children):
+            child = children[idx]
+
+            # Skip optional leading DOMAIN keyword and stray semicolons
+            if isinstance(child, TerminalNodeImpl):
+                token_type = child.symbol.type
+                if token_type == InterlisParserPy.DOMAIN or token_type == InterlisParserPy.SEMI:
+                    idx += 1
+                    continue
+
+            if not isinstance(child, TerminalNodeImpl) or child.symbol.type != InterlisParserPy.Name:
+                idx += 1
+                continue
+
+            domain_name = child.getText()
+            idx += 1
+
+            # Skip optional generic parameters "(<ABSTRACT|FINAL|GENERIC>)"
+            if idx < len(children) and isinstance(children[idx], TerminalNodeImpl) and children[idx].symbol.type == InterlisParserPy.LPAR:
+                depth = 0
+                while idx < len(children):
+                    nested = children[idx]
+                    if isinstance(nested, TerminalNodeImpl):
+                        if nested.symbol.type == InterlisParserPy.LPAR:
+                            depth += 1
+                        elif nested.symbol.type == InterlisParserPy.RPAR:
+                            depth -= 1
+                            if depth == 0:
+                                idx += 1
+                                break
+                    idx += 1
+
+            # Skip optional "EXTENDS <DomainRef>"
+            if idx < len(children) and isinstance(children[idx], TerminalNodeImpl) and children[idx].symbol.type == InterlisParserPy.EXTENDS:
+                idx += 1  # EXTENDS
+                if idx < len(children):
+                    idx += 1  # DomainRefContext
+
+            # Advance to '=' token
+            while idx < len(children):
+                node = children[idx]
+                if isinstance(node, TerminalNodeImpl) and node.symbol.type == InterlisParserPy.EQ:
+                    idx += 1
+                    break
+                idx += 1
             else:
-                domain_type = self._build_type_from_ili(type_ctx) if type_ctx else Type(None)
+                break
+
+            # Skip optional MANDATORY keyword
+            if idx < len(children) and isinstance(children[idx], TerminalNodeImpl) and children[idx].symbol.type == InterlisParserPy.MANDATORY:
+                idx += 1
+
+            expr_parts: List[str] = []
+            while idx < len(children):
+                node = children[idx]
+                if isinstance(node, TerminalNodeImpl):
+                    token_type = node.symbol.type
+                    if token_type == InterlisParserPy.SEMI:
+                        idx += 1
+                        break
+                    if token_type == InterlisParserPy.CONSTRAINTS:
+                        # Skip constraint specification until ';'
+                        idx += 1
+                        while idx < len(children):
+                            skip_node = children[idx]
+                            if isinstance(skip_node, TerminalNodeImpl) and skip_node.symbol.type == InterlisParserPy.SEMI:
+                                break
+                            idx += 1
+                        continue
+                expr_parts.append(node.getText())
+                idx += 1
+
+            expr_text = "".join(expr_parts).strip()
+            if expr_text:
+                domain_type = self._type_from_text(expr_text)
                 if isinstance(domain_type, EnumerationType) and not domain_type.getName():
-                    domain_type.setName(name_token.getText())
-            domain = Domain(name=name_token.getText(), domain_type=domain_type)
-            domains.append(domain)
+                    domain_type.setName(domain_name)
+            else:
+                domain_type = Type(None)
+
+            domains.append(Domain(name=domain_name, domain_type=domain_type))
+
         return domains
 
     def _build_function(self, ctx) -> Function:
@@ -885,8 +951,13 @@ class _ModelBuilder:
     def _parse_formatted_type(self, text: str) -> Type:
         upper = text.upper()
         remainder = text[len("FORMAT") :]
-        if upper.startswith("FORMATBASEDON"):
-            rest = remainder[len("BASEDON") :]
+        remainder = remainder.lstrip()
+        if upper.replace(" ", "").startswith("FORMATBASEDON"):
+            rest = remainder
+            if rest.upper().startswith("BASED"):
+                rest = rest[len("BASED") :].lstrip()
+            if rest.upper().startswith("ON"):
+                rest = rest[len("ON") :].lstrip()
             base, _, picture = rest.partition("(")
             base = base.strip()
             picture = picture[:-1] if picture.endswith(")") else picture
