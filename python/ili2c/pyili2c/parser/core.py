@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 import re
-from typing import Iterable, List, Optional, Sequence
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 from urllib.parse import urlparse
 
-from antlr4 import CommonTokenStream, FileStream
+from antlr4 import CommonTokenStream, InputStream
 
 from ..metamodel import (
     AreaType,
@@ -142,6 +142,148 @@ class ParserSettings:
         return self._repository_manager
 
 
+def _collapse_ws_outside_strings(text: str) -> str:
+    result: List[str] = []
+    in_string = False
+    escape = False
+    quote_char = ""
+    for ch in text:
+        if in_string:
+            result.append(ch)
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == quote_char:
+                in_string = False
+        else:
+            if ch in {"'", '"'}:
+                in_string = True
+                quote_char = ch
+                result.append(ch)
+            elif ch.isspace():
+                continue
+            else:
+                result.append(ch)
+    return "".join(result)
+
+
+def _find_char_outside_groups(
+    text: str, start: int, target: str, *, end: Optional[int] = None
+) -> int:
+    depth = 0
+    in_string = False
+    escape = False
+    quote_char = ""
+    limit = len(text) if end is None else min(len(text), end)
+    i = start
+    while i < limit:
+        ch = text[i]
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == quote_char:
+                in_string = False
+        else:
+            if ch in {"'", '"'}:
+                in_string = True
+                quote_char = ch
+            elif ch in "([{":
+                depth += 1
+            elif ch in ")]}":
+                if depth > 0:
+                    depth -= 1
+            elif depth == 0 and ch == target:
+                return i
+        i += 1
+    return -1
+
+
+def _is_identifier_char(ch: str) -> bool:
+    return ch.isalnum() or ch in {"_", "."}
+
+
+def _find_keyword_outside_groups(
+    text: str, start: int, keyword: str, *, end: Optional[int] = None
+) -> int:
+    depth = 0
+    in_string = False
+    escape = False
+    quote_char = ""
+    limit = len(text) if end is None else min(len(text), end)
+    i = start
+    klen = len(keyword)
+
+    while i < limit:
+        ch = text[i]
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == quote_char:
+                in_string = False
+        else:
+            if ch in {"'", '"'}:
+                in_string = True
+                quote_char = ch
+            elif ch in "([{":
+                depth += 1
+            elif ch in ")]}":
+                if depth > 0:
+                    depth -= 1
+            elif depth == 0 and text.startswith(keyword, i):
+                before_idx = i - 1
+                after_idx = i + klen
+                before_valid = before_idx >= 0 and _is_identifier_char(text[before_idx])
+                after_valid = after_idx < limit and _is_identifier_char(text[after_idx])
+                if not before_valid and not after_valid:
+                    return i
+        i += 1
+    return -1
+
+
+def _preprocess_unique_where(text: str) -> Tuple[str, Dict[str, str]]:
+    placeholders: Dict[str, str] = {}
+    parts: List[str] = []
+    idx = 0
+    token = "UNIQUE"
+    length = len(text)
+
+    while idx < length:
+        pos = text.find(token, idx)
+        if pos == -1:
+            parts.append(text[idx:])
+            break
+
+        parts.append(text[idx:pos])
+        constraint_end = _find_char_outside_groups(text, pos, ";")
+        if constraint_end == -1:
+            parts.append(text[pos:])
+            break
+
+        segment = text[pos:constraint_end]
+        where_idx = _find_keyword_outside_groups(segment, len(token), "WHERE")
+        if where_idx != -1:
+            colon_idx = _find_char_outside_groups(
+                segment, where_idx + len("WHERE"), ":", end=len(segment)
+            )
+            if colon_idx != -1:
+                placeholder = f"UniqueWherePlaceholder{len(placeholders)}"
+                condition_raw = segment[where_idx + len("WHERE") : colon_idx]
+                condition = _collapse_ws_outside_strings(condition_raw)
+                placeholders[placeholder] = condition
+                segment = segment[:where_idx] + placeholder + segment[colon_idx:]
+
+        parts.append(segment)
+        parts.append(";")
+        idx = constraint_end + 1
+
+    return ("".join(parts), placeholders)
+
+
 class _ParseContext:
     def __init__(self, settings: ParserSettings) -> None:
         self.settings = settings
@@ -160,7 +302,10 @@ class _ParseContext:
 
         self._parsed_files.add(path)
 
-        stream = FileStream(str(path), encoding="utf8")
+        original_text = path.read_text(encoding="utf8")
+        processed_text, unique_where_mapping = _preprocess_unique_where(original_text)
+        stream = InputStream(processed_text)
+        stream.name = str(path)
         lexer = InterlisLexer(stream)
         tokens = CommonTokenStream(lexer)
         parser = InterlisParserPy(tokens)
@@ -180,6 +325,7 @@ class _ParseContext:
             schema_version=schema_version,
             context=self,
             source_path=path,
+            unique_where_mapping=unique_where_mapping,
         )
         model = builder.build_model(model_ctx)
         model._source = path  # type: ignore[attr-defined]
@@ -270,6 +416,7 @@ class _ModelBuilder:
     schema_version: Optional[str]
     context: _ParseContext
     source_path: Path
+    unique_where_mapping: Dict[str, str] = field(default_factory=dict)
     pending_extends: List[tuple[Viewable, str]] = field(default_factory=list)
     active_model: Optional[Model] = None
 
@@ -435,6 +582,11 @@ class _ModelBuilder:
             expression_text = mctx.expression().getText()
         elif ctx.expression():
             expression_text = ctx.expression().getText()
+
+        for placeholder, condition in list(self.unique_where_mapping.items()):
+            if placeholder in expression_text:
+                expression_text = expression_text.replace(placeholder, f"WHERE{condition}")
+                del self.unique_where_mapping[placeholder]
 
         return Constraint(name=name, expression=expression_text, mandatory=mandatory)
 

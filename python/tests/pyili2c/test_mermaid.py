@@ -61,7 +61,10 @@ def test_testsuite_model_contains_inheritance_and_association():
 
     diagram = render(td)
 
-    assert "TestSuite.Gebaeude2 --|> TestSuite.Gebaeude" in diagram
+    assert (
+        "TestSuite.Bodenbedeckung.Gebaeude2 --|> TestSuite.Bodenbedeckung.Gebaeude"
+        in diagram
+    )
 
 
 def test_so_arp_model_diagram_has_expected_relationships():
