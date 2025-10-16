@@ -10,6 +10,7 @@ from .metamodel import (
     AssociationEnd,
     Attribute,
     Cardinality,
+    EnumTreeValueType,
     EnumerationType,
     ListType,
     Model,
@@ -116,15 +117,23 @@ def _collect_model_level(diagram: Diagram, model: Model) -> None:
             namespace.node_order.append(fqn)
 
     for domain in model.getDomains():
+        namespace = diagram.get_or_create_namespace("<root>")
+        fqn = f"{model.getName()}.{domain.getName()}"
         domain_type = domain.getType()
         if isinstance(domain_type, EnumerationType):
-            namespace = diagram.get_or_create_namespace("<root>")
-            fqn = f"{model.getName()}.{domain.getName()}"
             node = diagram.nodes.setdefault(
                 fqn,
                 Node(fqn=fqn, display_name=domain.getName(), stereotypes=["Enumeration"]),
             )
             node.attributes = [literal for literal in domain_type.getLiterals()]
+            if fqn not in namespace.node_order:
+                namespace.node_order.append(fqn)
+        elif isinstance(domain_type, EnumTreeValueType):
+            node = diagram.nodes.setdefault(
+                fqn,
+                Node(fqn=fqn, display_name=domain.getName(), stereotypes=["Enumeration"]),
+            )
+            node.attributes = _enum_tree_literals(diagram, model, domain_type)
             if fqn not in namespace.node_order:
                 namespace.node_order.append(fqn)
 
@@ -136,6 +145,71 @@ def _collect_topic(diagram: Diagram, model: Model, topic: Topic) -> None:
         _register_table_node(diagram, model, table, topic=topic)
     for association in topic.getAssociations():
         _register_association(diagram, model, association, topic=topic)
+
+
+def _enum_tree_literals(
+    diagram: Diagram, model: Model, enum_tree: EnumTreeValueType
+) -> List[str]:
+    base_literals = _enumeration_literals(diagram, model, enum_tree.getBaseDomain())
+    if not base_literals:
+        return []
+
+    values: List[str] = []
+    seen: set[str] = set()
+    for literal in base_literals:
+        for prefix in _enumeration_prefixes(literal):
+            if prefix not in seen:
+                values.append(prefix)
+                seen.add(prefix)
+        if literal not in seen:
+            values.append(literal)
+            seen.add(literal)
+    return values
+
+
+def _enumeration_literals(diagram: Diagram, model: Model, reference: str) -> List[str]:
+    base_fqn = _domain_fqn(model, reference)
+    if base_fqn:
+        node = diagram.nodes.get(base_fqn)
+        if node is not None and node.attributes:
+            return list(node.attributes)
+
+    candidates = _candidate_domain_names(reference)
+    for domain in model.getDomains():
+        if domain.getName() in candidates:
+            domain_type = domain.getType()
+            if isinstance(domain_type, EnumerationType):
+                return [literal for literal in domain_type.getLiterals()]
+
+    node = diagram.nodes.get(reference)
+    if node is not None and node.attributes:
+        return list(node.attributes)
+    return []
+
+
+def _enumeration_prefixes(literal: str) -> List[str]:
+    parts = [part for part in literal.split(".") if part]
+    prefixes: List[str] = []
+    for index in range(1, len(parts)):
+        prefixes.append(".".join(parts[:index]))
+    return prefixes
+
+
+def _domain_fqn(model: Model, reference: str | None) -> str | None:
+    if not reference:
+        return None
+    if "." in reference:
+        return reference
+    return f"{model.getName()}.{reference}"
+
+
+def _candidate_domain_names(reference: str | None) -> List[str]:
+    if not reference:
+        return []
+    parts = [part for part in reference.split(".") if part]
+    if not parts:
+        return []
+    return [parts[-1]]
 
 
 def _register_table_node(diagram: Diagram, model: Model, table: Table, *, topic: Topic | None) -> None:

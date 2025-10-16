@@ -75,6 +75,8 @@ def test_testsuite_model_renders_enumeration_domain_only():
     assert "class TestSuite.Farbe" in diagram
     assert "  <<Enumeration>>" in diagram
     assert "    rot.dunkel" in diagram
+    assert "class TestSuite.AlleFarben" in diagram
+    assert "    rot\n    rot.dunkel" in diagram
     assert "class TestSuite.Datum" not in diagram
 
 
