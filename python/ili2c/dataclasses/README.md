@@ -44,7 +44,7 @@ from ili2c.dataclasses.generator import DataclassGenerator
 from ili2c.pyili2c.parser import parse
 
 model_path = Path("examples/models/Foo.ili")
-model = parse(model_path)
+model = parse(model_path).getModels()[0]
 module_text = DataclassGenerator(model).build_module()
 
 Path("foo_model.py").write_text(module_text)
