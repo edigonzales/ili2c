@@ -42,7 +42,8 @@ class FieldSpec:
 @dataclass
 class ClassSpec:
     name: str
-    topic: str
+    scope: str | None
+    topic: str | None
     kind: str
     abstract: bool
     base: str | None
@@ -50,7 +51,9 @@ class ClassSpec:
 
     @property
     def qualified_name(self) -> str:
-        return f"{self.topic}.{self.name}"
+        if self.scope:
+            return f"{self.scope}.{self.name}"
+        return self.name
 
 
 @dataclass
@@ -118,15 +121,36 @@ class DataclassGenerator:
                 continue
             kind = (table.getKind() or "").lower()
             kind_label = "structure" if kind == "structure" else "class"
-            specs.append(self._build_class_spec(table, self.model_name, kind=kind_label))
+            specs.append(
+                self._build_class_spec(
+                    table,
+                    scope=self.model_name or None,
+                    topic=None,
+                    kind=kind_label,
+                )
+            )
 
         for topic in self.model.getTopics():
             topic_name = topic.getName() or ""
             qualified_topic = f"{self.model_name}.{topic_name}" if topic_name else self.model_name
             for struct in topic.getStructures():
-                specs.append(self._build_class_spec(struct, qualified_topic, kind="structure"))
+                specs.append(
+                    self._build_class_spec(
+                        struct,
+                        scope=qualified_topic or None,
+                        topic=qualified_topic or None,
+                        kind="structure",
+                    )
+                )
             for cls in topic.getClasses():
-                specs.append(self._build_class_spec(cls, qualified_topic, kind="class"))
+                specs.append(
+                    self._build_class_spec(
+                        cls,
+                        scope=qualified_topic or None,
+                        topic=qualified_topic or None,
+                        kind="class",
+                    )
+                )
 
         imports: set[str] = set()
         for spec in specs:
@@ -160,18 +184,25 @@ class DataclassGenerator:
         return "\n".join(lines)
 
     # ------------------------------------------------------------------
-    def _build_class_spec(self, table: Table, qualified_topic: str, *, kind: str) -> ClassSpec:
+    def _build_class_spec(
+        self,
+        table: Table,
+        *,
+        scope: str | None,
+        topic: str | None,
+        kind: str,
+    ) -> ClassSpec:
         base = table.getExtending().getName() if table.getExtending() else None
         abstract = table.isAbstract() if hasattr(table, "isAbstract") else False
         used_names: set[str] = set()
         fields: list[FieldSpec] = []
         for attr in table.getAttributes():
             field_name = self._python_name(attr.getName() or "", used=used_names)
-            type_info = self._build_type_info(attr, qualified_topic)
+            type_info = self._build_type_info(attr)
             metadata = {
                 "ili": {
                     "model": self.model_name,
-                    "topic": qualified_topic,
+                    "topic": topic,
                     "name": attr.getName(),
                     "mandatory": attr.isMandatory(),
                     **type_info.metadata,
@@ -189,7 +220,8 @@ class DataclassGenerator:
             )
         return ClassSpec(
             name=table.getName() or "",
-            topic=qualified_topic,
+            scope=scope,
+            topic=topic,
             kind=kind,
             abstract=abstract,
             base=base,
@@ -197,7 +229,7 @@ class DataclassGenerator:
         )
 
     # ------------------------------------------------------------------
-    def _build_type_info(self, attribute: Attribute, qualified_topic: str) -> TypeInfo:
+    def _build_type_info(self, attribute: Attribute) -> TypeInfo:
         domain = attribute.getDomain()
         metadata = self._describe_domain(domain)
         type_hint, imports = self._type_expr_for_domain(domain, mandatory=attribute.isMandatory())

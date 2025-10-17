@@ -44,6 +44,13 @@ def test_generate_model_level_tables_included():
     assert "'qualified_target': 'SimpleModel.Address'" in module_text
 
 
+def test_model_level_structure_topic_none():
+    module_text = generate_model_dataclasses(DATA_DIR / "modelA.ili")
+    assert "class StructA:" in module_text
+    assert "topic = None" in module_text
+    assert "'topic': None" in module_text
+
+
 def test_generate_testsuite_literals_and_bag_metadata():
     module_text = generate_model_dataclasses(DATA_DIR / "TestSuite_mod-0.ili")
     assert "Literal['A', 'B', 'C']" in module_text
