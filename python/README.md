@@ -7,21 +7,21 @@ for discovering and caching INTERLIS models.
 
 ## Installation
 
-The package targets Python 3.9+. Install it from the repository root with
-`pip`:
-
 ```bash
-pip install ./python
+pip install ili2c-python
 ```
 
-Use the editable mode during development:
+You can also install directly from a clone of this repository:
 
 ```bash
-pip install --editable ./python
+pip install .
 ```
 
-Optional command line extras are not required—the package exposes everything
-through importable modules.
+When developing locally, install the optional `test` extra to run the pytest suite:
+
+```bash
+pip install .[test]
+```
 
 ## Package layout and features
 
