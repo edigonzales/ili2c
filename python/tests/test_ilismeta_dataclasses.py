@@ -57,6 +57,16 @@ def test_generate_testsuite_literals_and_bag_metadata():
     assert "'is_bag': True" in module_text
 
 
+def test_identifier_fields_render_as_strings():
+    module_text = generate_model_dataclasses(DATA_DIR / "TestSuite_mod-0.ili")
+    assert "art_uuid: str | None" in module_text
+    assert "art_standard_id: str | None" in module_text
+    assert "text_id: str | None" in module_text
+    assert "'alias_kind': 'oid'" in module_text
+    assert "'identifier_category': 'oid'" in module_text
+    assert "'identifier_kind': 'text'" in module_text
+
+
 def test_generate_so_arp_reference_metadata():
     module_text = generate_model_dataclasses(
         DATA_DIR / "SO_ARP_SEin_Konfiguration_20250115.ili"

@@ -18,6 +18,7 @@ from ..pyili2c.metamodel import (
     ObjectType,
     ReferenceType,
     Table,
+    TextOIDType,
     TextType,
     Type,
     TypeAlias,
@@ -80,6 +81,48 @@ class DataclassGenerator:
     }
 
     _BOOLEAN_ALIASES = {"BOOLEAN"}
+
+    _IDENTIFIER_ALIASES: dict[str, tuple[str, dict[str, Any]]] = {
+        "ANYOID": (
+            "oid",
+            {
+                "python_type": "str",
+                "identifier_kind": "text",
+            },
+        ),
+        "UUIDOID": (
+            "oid",
+            {
+                "python_type": "str",
+                "identifier_kind": "text",
+                "max_length": 36,
+            },
+        ),
+        "STANDARDOID": (
+            "oid",
+            {
+                "python_type": "str",
+                "identifier_kind": "text",
+                "max_length": 16,
+            },
+        ),
+        "I32OID": (
+            "oid",
+            {
+                "python_type": "int",
+                "identifier_kind": "numeric",
+                "minimum": 0,
+                "maximum": 2147483647,
+            },
+        ),
+        "TID": (
+            "tid",
+            {
+                "python_type": "str",
+                "identifier_kind": "text",
+            },
+        ),
+    }
 
     def __init__(self, model: Model) -> None:
         self.model = model
@@ -285,7 +328,24 @@ class DataclassGenerator:
             info["items"] = self._describe_domain(domain.getElementType())
         elif isinstance(domain, ObjectType):
             target_info = self._normalize_target(domain.getTarget())
+            identifier = self._lookup_identifier_info(domain.getTarget())
+            if identifier:
+                kind, payload = identifier
+                target_info["identifier_category"] = kind
+                target_info.update(payload)
             info.update(target_info)
+        elif isinstance(domain, TextOIDType):
+            value_info = self._describe_domain(domain.getOIDType())
+            info.update(
+                {
+                    "identifier_category": "oid",
+                    "identifier_kind": "text",
+                    "python_type": "str",
+                    "value_type": value_info,
+                }
+            )
+            if "max_length" in value_info:
+                info.setdefault("max_length", value_info["max_length"])
         return info
 
     def _alias_metadata(self, alias: str) -> dict[str, Any]:
@@ -305,6 +365,10 @@ class DataclassGenerator:
                 "max_length": self._TEXT_ALIASES[alias],
                 "python_type": "str",
             }
+        identifier = self._lookup_identifier_info(alias)
+        if identifier:
+            kind, data = identifier
+            return {"alias_kind": kind, **data}
         if alias in self._structures or alias in self._classes:
             qualified = self._full_names.get(alias, alias)
             return {
@@ -314,6 +378,18 @@ class DataclassGenerator:
                 "python_type": alias,
             }
         return {"alias_kind": "unknown", "python_type": "Any"}
+
+    def _lookup_identifier_info(self, name: str | None) -> tuple[str, dict[str, Any]] | None:
+        if not name:
+            return None
+        base = name.split(".")[-1]
+        entry = self._IDENTIFIER_ALIASES.get(base)
+        if not entry:
+            return None
+        kind, payload = entry
+        info = dict(payload)
+        info["identifier_category"] = kind
+        return kind, info
 
     def _normalize_target(self, raw: str | None) -> dict[str, Any]:
         if not raw:
@@ -359,9 +435,16 @@ class DataclassGenerator:
             type_hint = f"tuple[{element_type}, ...]"
         elif isinstance(domain, ObjectType):
             target = domain.getTarget()
-            type_hint = target.split(".")[-1] if target else "Any"
-            if not target:
-                imports.add("Any")
+            identifier = self._lookup_identifier_info(target)
+            if identifier:
+                _, payload = identifier
+                type_hint = payload.get("python_type", "str")
+            else:
+                type_hint = target.split(".")[-1] if target else "Any"
+                if not target:
+                    imports.add("Any")
+        elif isinstance(domain, TextOIDType):
+            type_hint = "str"
         else:
             type_hint = "Any"
             imports.add("Any")
