@@ -133,6 +133,35 @@ layer:
 * Identifier aliases (such as TIDs or OIDs) are treated as primary keys so
   transfer identifiers map cleanly to database identifiers.
 
+### Running the full SQLAlchemy example
+
+For a runnable, end-to-end integration have a look at
+`ili2c.dataclasses.examples.sqlalchemy_example`.  The module generates
+dataclasses for the bundled `SimpleModel.ili`, translates them into SQLAlchemy
+tables backed by SQLite, writes sample data, and finally reconstructs the
+dataclasses from database rows.
+
+Execute the example directly:
+
+```bash
+PYTHONPATH=python python -m ili2c.dataclasses.examples.sqlalchemy_example \
+    --database demo.sqlite
+```
+
+Sample output:
+
+```
+Created 1 building(s) in demo.sqlite
+  Building #1: Hauptstrasse 1, Nebenweg 5
+```
+
+The example is covered by an automated test, so the full pipeline stays
+working:
+
+```bash
+PYTHONPATH=python pytest python/tests/test_sqlalchemy_example.py
+```
+
 ### Running the regression tests
 
 The repository ships with snapshot-based tests that exercise the generator
