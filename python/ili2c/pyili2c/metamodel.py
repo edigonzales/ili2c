@@ -201,6 +201,8 @@ class Topic(ContainerElement):
         self._classes: List[Table] = []
         self._structures: List[Table] = []
         self._associations: List["Association"] = []
+        self._oid_type: Optional[Type] = None
+        self._basket_oid_type: Optional[Type] = None
 
     def add_class(self, table: "Table") -> "Table":
         self._classes.append(table)
@@ -222,6 +224,22 @@ class Topic(ContainerElement):
 
     def getAssociations(self) -> Sequence["Association"]:
         return tuple(self._associations)
+
+    def setOIDType(self, oid_type: Optional[Type]) -> None:
+        self._oid_type = oid_type
+        if oid_type is not None:
+            self._register_child(oid_type)
+
+    def getOIDType(self) -> Optional[Type]:
+        return self._oid_type
+
+    def setBasketOIDType(self, oid_type: Optional[Type]) -> None:
+        self._basket_oid_type = oid_type
+        if oid_type is not None:
+            self._register_child(oid_type)
+
+    def getBasketOIDType(self) -> Optional[Type]:
+        return self._basket_oid_type
 
 
 class Type(Element):
@@ -648,12 +666,21 @@ class Table(Viewable):
         super().__init__(name=name, abstract=abstract)
         self._kind = kind
         self._identifiable = identifiable
+        self._oid_type: Optional[Type] = None
 
     def isIdentifiable(self) -> bool:
         return self._identifiable
 
     def getKind(self) -> str:
         return self._kind
+
+    def setOIDType(self, oid_type: Optional[Type]) -> None:
+        self._oid_type = oid_type
+        if oid_type is not None:
+            self._register_child(oid_type)
+
+    def getOIDType(self) -> Optional[Type]:
+        return self._oid_type
 
 
 class Association(ContainerElement):

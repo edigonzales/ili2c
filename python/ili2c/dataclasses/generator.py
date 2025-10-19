@@ -11,6 +11,7 @@ from typing import Any, Mapping
 
 from ..pyili2c.metamodel import (
     Attribute,
+    Domain,
     EnumerationType,
     ListType,
     Model,
@@ -130,6 +131,7 @@ class DataclassGenerator:
         self._structures: set[str] = set()
         self._classes: set[str] = set()
         self._full_names: dict[str, str] = {}
+        self._domains: dict[str, Domain] = {}
 
         qualified_model = self.model_name
         for table in model.getTables():
@@ -154,6 +156,14 @@ class DataclassGenerator:
                 name = cls.getName() or ""
                 self._classes.add(name)
                 self._full_names[name] = f"{qualified_topic}.{name}" if name else qualified_topic
+
+        for domain in model.elements_of_type(Domain):
+            name = domain.getName() or ""
+            scoped = domain.getScopedName()
+            if name and name not in self._domains:
+                self._domains[name] = domain
+            if scoped and scoped not in self._domains:
+                self._domains[scoped] = domain
 
     # ------------------------------------------------------------------
     def build_module(self) -> str:
@@ -239,6 +249,9 @@ class DataclassGenerator:
         abstract = table.isAbstract() if hasattr(table, "isAbstract") else False
         used_names: set[str] = set()
         fields: list[FieldSpec] = []
+        tid_field = self._build_tid_field_spec(table, topic=topic, used_names=used_names)
+        if tid_field:
+            fields.append(tid_field)
         for attr in table.getAttributes():
             field_name = self._python_name(attr.getName() or "", used=used_names)
             type_info = self._build_type_info(attr)
@@ -272,6 +285,41 @@ class DataclassGenerator:
         )
 
     # ------------------------------------------------------------------
+    def _build_tid_field_spec(
+        self,
+        table: Table,
+        *,
+        topic: str | None,
+        used_names: set[str],
+    ) -> FieldSpec | None:
+        if not hasattr(table, "getOIDType"):
+            return None
+        oid_type = table.getOIDType()
+        if oid_type is None:
+            return None
+        field_name = self._python_name("tid", used=used_names)
+        type_hint, imports = self._type_expr_for_domain(oid_type, mandatory=False)
+        domain_info = self._describe_domain(oid_type)
+        metadata = {
+            "ili": {
+                "model": self.model_name,
+                "topic": topic,
+                "name": "TID",
+                "mandatory": table.isIdentifiable(),
+                "identifier": True,
+                **domain_info,
+            }
+        }
+        return FieldSpec(
+            name=field_name,
+            type_hint=type_hint,
+            metadata=metadata,
+            default="None",
+            default_factory=None,
+            imports=imports,
+        )
+
+    # ------------------------------------------------------------------
     def _build_type_info(self, attribute: Attribute) -> TypeInfo:
         domain = attribute.getDomain()
         metadata = self._describe_domain(domain)
@@ -293,7 +341,11 @@ class DataclassGenerator:
         )
 
     # ------------------------------------------------------------------
-    def _describe_domain(self, domain: Type) -> dict[str, Any]:
+    def _describe_domain(
+        self, domain: Type, *, _visited_aliases: set[str] | None = None
+    ) -> dict[str, Any]:
+        if _visited_aliases is None:
+            _visited_aliases = set()
         info: dict[str, Any] = {"ili_type": domain.__class__.__name__}
         display_name = domain.getDisplayName()
         if display_name:
@@ -314,7 +366,7 @@ class DataclassGenerator:
         elif isinstance(domain, TypeAlias):
             alias = domain.getAliasing()
             info["alias"] = alias
-            info.update(self._alias_metadata(alias))
+            info.update(self._alias_metadata(alias, _visited_aliases=_visited_aliases))
         elif isinstance(domain, ReferenceType):
             target_info = self._normalize_target(domain.getReferred())
             info.update(target_info)
@@ -325,7 +377,9 @@ class DataclassGenerator:
                 "min": card.getMinimum(),
                 "max": None if card.getMaximum() < 0 else card.getMaximum(),
             }
-            info["items"] = self._describe_domain(domain.getElementType())
+            info["items"] = self._describe_domain(
+                domain.getElementType(), _visited_aliases=_visited_aliases
+            )
         elif isinstance(domain, ObjectType):
             target_info = self._normalize_target(domain.getTarget())
             identifier = self._lookup_identifier_info(domain.getTarget())
@@ -335,7 +389,9 @@ class DataclassGenerator:
                 target_info.update(payload)
             info.update(target_info)
         elif isinstance(domain, TextOIDType):
-            value_info = self._describe_domain(domain.getOIDType())
+            value_info = self._describe_domain(
+                domain.getOIDType(), _visited_aliases=_visited_aliases
+            )
             info.update(
                 {
                     "identifier_category": "oid",
@@ -348,36 +404,54 @@ class DataclassGenerator:
                 info.setdefault("max_length", value_info["max_length"])
         return info
 
-    def _alias_metadata(self, alias: str) -> dict[str, Any]:
-        if alias in self._BOOLEAN_ALIASES:
-            return {"alias_kind": "boolean", "python_type": "bool"}
-        if alias in self._NUMERIC_ALIASES:
-            minimum, maximum = self._NUMERIC_ALIASES[alias]
-            return {
-                "alias_kind": "numeric",
-                "minimum": minimum,
-                "maximum": maximum,
-                "python_type": "int",
-            }
-        if alias in self._TEXT_ALIASES:
-            return {
-                "alias_kind": "text",
-                "max_length": self._TEXT_ALIASES[alias],
-                "python_type": "str",
-            }
-        identifier = self._lookup_identifier_info(alias)
-        if identifier:
-            kind, data = identifier
-            return {"alias_kind": kind, **data}
-        if alias in self._structures or alias in self._classes:
-            qualified = self._full_names.get(alias, alias)
-            return {
-                "alias_kind": "object",
-                "target": alias,
-                "qualified_target": qualified,
-                "python_type": alias,
-            }
-        return {"alias_kind": "unknown", "python_type": "Any"}
+    def _alias_metadata(
+        self, alias: str, *, _visited_aliases: set[str] | None = None
+    ) -> dict[str, Any]:
+        visited = _visited_aliases if _visited_aliases is not None else set()
+        if alias in visited:
+            return {"alias_kind": "unknown", "python_type": "Any"}
+        visited.add(alias)
+        try:
+            if alias in self._BOOLEAN_ALIASES:
+                return {"alias_kind": "boolean", "python_type": "bool"}
+            if alias in self._NUMERIC_ALIASES:
+                minimum, maximum = self._NUMERIC_ALIASES[alias]
+                return {
+                    "alias_kind": "numeric",
+                    "minimum": minimum,
+                    "maximum": maximum,
+                    "python_type": "int",
+                }
+            if alias in self._TEXT_ALIASES:
+                return {
+                    "alias_kind": "text",
+                    "max_length": self._TEXT_ALIASES[alias],
+                    "python_type": "str",
+                }
+            identifier = self._lookup_identifier_info(alias)
+            if identifier:
+                kind, data = identifier
+                return {"alias_kind": kind, **data}
+            if alias in self._structures or alias in self._classes:
+                qualified = self._full_names.get(alias, alias)
+                return {
+                    "alias_kind": "object",
+                    "target": alias,
+                    "qualified_target": qualified,
+                    "python_type": alias,
+                }
+            domain = self._lookup_domain(alias)
+            if domain is not None:
+                info = self._describe_domain(
+                    domain.getType(), _visited_aliases=visited
+                )
+                info.setdefault("alias_kind", "domain")
+                info.setdefault("python_type", "Any")
+                info.setdefault("domain", domain.getScopedName() or domain.getName())
+                return info
+            return {"alias_kind": "unknown", "python_type": "Any"}
+        finally:
+            visited.discard(alias)
 
     def _lookup_identifier_info(self, name: str | None) -> tuple[str, dict[str, Any]] | None:
         if not name:
@@ -390,6 +464,15 @@ class DataclassGenerator:
         info = dict(payload)
         info["identifier_category"] = kind
         return kind, info
+
+    def _lookup_domain(self, name: str | None) -> Domain | None:
+        if not name:
+            return None
+        domain = self._domains.get(name)
+        if domain is not None:
+            return domain
+        base = name.split(".")[-1]
+        return self._domains.get(base)
 
     def _normalize_target(self, raw: str | None) -> dict[str, Any]:
         if not raw:
