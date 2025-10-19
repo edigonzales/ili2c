@@ -14,7 +14,7 @@ from ...pyili2c.parser import parse
 
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
-MODEL_PATH = DATA_DIR / "simple.ili"
+MODEL_PATH = DATA_DIR / "TestSuite_mod-0.ili"
 
 
 def _load_dataclass_module(model_path: Path) -> ModuleType:

@@ -101,3 +101,14 @@ HTTP fetches. Avoid adding print statements; emit structured logs instead.
 3. Run the full test suite (`pytest`) and, optionally, the network-marked tests
    if repository-facing behaviour changed.
 4. Commit regenerated ANTLR artefacts whenever the grammar changes.
+
+## How to run the UI scaffolding example
+
+1. From the repository root, you don’t need any third-party packages—just point PYTHONPATH at the repo’s python/ folder so the module can be imported.
+2. Run the example module directly; by default it uses the bundled SimpleModel.ili file and writes a standalone HTML document: 
+```
+PYTHONPATH=python python -m ili2c.dataclasses.examples.ui_scaffolding_example \
+    --output demo_form.html
+```
+3. Open the generated demo_form.html (or whichever filename you chose) in any web browser. The top of the page summarizes the discovered dataclasses, followed by fully expanded forms you can interact with like a normal user.
+
