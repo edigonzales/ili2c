@@ -8,23 +8,38 @@ from pathlib import Path
 from types import ModuleType
 from typing import Iterable
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    Float,
-    ForeignKey,
-    Integer,
-    MetaData,
-    String,
-    Table,
-    Text,
-    create_engine,
-    select,
-)
-from sqlalchemy.engine import URL
-
-from ..generator import DataclassGenerator
 from ...pyili2c.parser import parse
+from ..generator import DataclassGenerator
+
+try:  # pragma: no cover - exercised indirectly via tests
+    from sqlalchemy import (
+        Boolean,
+        Column,
+        Float,
+        ForeignKey,
+        Integer,
+        MetaData,
+        String,
+        Table,
+        Text,
+        create_engine,
+        select,
+    )
+    from sqlalchemy.engine import URL
+except ImportError:  # pragma: no cover - handled in ``_require_sqlalchemy``
+    SQLALCHEMY_AVAILABLE = False
+else:
+    SQLALCHEMY_AVAILABLE = True
+
+
+def _require_sqlalchemy() -> None:
+    """Ensure SQLAlchemy is available before running the example."""
+
+    if not SQLALCHEMY_AVAILABLE:
+        raise RuntimeError(
+            "SQLAlchemy is required for this example. "
+            "Install it with `pip install ili2c-python[examples]` or `pip install sqlalchemy`."
+        )
 
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
@@ -70,6 +85,8 @@ def _python_type_to_sqlalchemy(field_info: dict) -> type:
 
 def _build_sqlalchemy_metadata(module: ModuleType) -> tuple[MetaData, dict[type, Table], dict[tuple[type, str], AssociationMapping]]:
     """Create SQLAlchemy ``MetaData`` objects for all non-abstract classes."""
+
+    _require_sqlalchemy()
 
     metadata = MetaData()
     tables: dict[type, Table] = {}
@@ -122,6 +139,8 @@ def _build_sqlalchemy_metadata(module: ModuleType) -> tuple[MetaData, dict[type,
 def _seed_sample_data(engine, module: ModuleType, tables: dict[type, Table], bag_tables: dict[tuple[type, str], AssociationMapping]) -> None:
     """Populate the SQLite database with a single building and two addresses."""
 
+    _require_sqlalchemy()
+
     address_cls = getattr(module, "Address")
     building_cls = getattr(module, "Building")
 
@@ -157,6 +176,8 @@ def _seed_sample_data(engine, module: ModuleType, tables: dict[type, Table], bag
 
 def _load_buildings(engine, module: ModuleType, tables: dict[type, Table], bag_tables: dict[tuple[type, str], AssociationMapping]) -> list[tuple[int, object]]:
     """Return the stored buildings together with their ``Address`` dataclasses."""
+
+    _require_sqlalchemy()
 
     building_cls = getattr(module, "Building")
     address_cls = getattr(module, "Address")
@@ -205,6 +226,8 @@ def run(database_path: str | Path = Path("sqlalchemy_example.sqlite")) -> list[t
     reflects them into SQLAlchemy metadata, seeds a single building, and
     finally returns the building together with its addresses as dataclasses.
     """
+
+    _require_sqlalchemy()
 
     module = _load_dataclass_module(MODEL_PATH)
     metadata, tables, bag_tables = _build_sqlalchemy_metadata(module)

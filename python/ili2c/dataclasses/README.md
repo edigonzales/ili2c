@@ -141,6 +141,11 @@ dataclasses for the bundled `SimpleModel.ili`, translates them into SQLAlchemy
 tables backed by SQLite, writes sample data, and finally reconstructs the
 dataclasses from database rows.
 
+> **Optional dependency**: SQLAlchemy is not required for the core
+> `ili2c.dataclasses` package.  Install it explicitly (for example with
+> `pip install ili2c-python[examples]` or `pip install sqlalchemy`) before
+> running the example or its regression test.
+
 Execute the example directly:
 
 ```bash
@@ -161,6 +166,9 @@ working:
 ```bash
 PYTHONPATH=python pytest python/tests/test_sqlalchemy_example.py
 ```
+
+If SQLAlchemy is not installed the test is skipped automatically, keeping the
+base test suite dependency-free.
 
 ### Generating UI scaffolding without extra dependencies
 

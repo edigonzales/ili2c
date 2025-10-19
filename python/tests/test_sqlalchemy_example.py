@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import pytest
+
+
+pytest.importorskip("sqlalchemy")
+
 from ili2c.dataclasses.examples import sqlalchemy_example
 
 
