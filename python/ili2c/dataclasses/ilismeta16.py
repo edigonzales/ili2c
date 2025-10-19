@@ -832,6 +832,28 @@ class CondSignParamAssignment:
 
 @dataclass(kw_only=True)
 class MetaElement:
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     name: str = field(
         metadata={'ili': {'display_name': 'TEXT',
                  'ili_type': 'TextType',
@@ -867,6 +889,28 @@ class MetaElement:
 
 @dataclass(kw_only=True)
 class MetaAttribute:
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     name: str = field(
         metadata={'ili': {'display_name': 'TEXT',
                  'ili_type': 'TextType',
@@ -898,6 +942,28 @@ class MetaAttribute:
 
 @dataclass(kw_only=True)
 class ExtendableME(MetaElement):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     abstract: bool = field(
         metadata={'ili': {'alias': 'BOOLEAN',
                  'alias_kind': 'boolean',
@@ -940,6 +1006,28 @@ class ExtendableME(MetaElement):
 
 @dataclass(kw_only=True)
 class Package(MetaElement):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.Package'
         topic = 'IlisMeta16.ModelData'
@@ -949,6 +1037,28 @@ class Package(MetaElement):
 
 @dataclass(kw_only=True)
 class Model(Package):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     ili_version: str = field(
         metadata={'ili': {'display_name': 'TEXT',
                  'ili_type': 'TextType',
@@ -1089,7 +1199,28 @@ class Model(Package):
 
 @dataclass(kw_only=True)
 class SubModel(Package):
-    """Auto-generated dataclass."""
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.SubModel'
         topic = 'IlisMeta16.ModelData'
@@ -1099,6 +1230,28 @@ class SubModel(Package):
 
 @dataclass(kw_only=True)
 class Type(ExtendableME):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.Type'
         topic = 'IlisMeta16.ModelData'
@@ -1108,6 +1261,28 @@ class Type(ExtendableME):
 
 @dataclass(kw_only=True)
 class Constraint(MetaElement):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.Constraint'
         topic = 'IlisMeta16.ModelData'
@@ -1117,6 +1292,28 @@ class Constraint(MetaElement):
 
 @dataclass(kw_only=True)
 class DomainType(Type):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     mandatory: bool = field(
         metadata={'ili': {'alias': 'BOOLEAN',
                  'alias_kind': 'boolean',
@@ -1137,6 +1334,28 @@ class DomainType(Type):
 
 @dataclass(kw_only=True)
 class Class(Type):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     kind: Literal['Structure', 'Class', 'View', 'Association'] = field(
         metadata={'ili': {'display_name': 'Structure, Class, View, Association',
                  'ili_type': 'EnumerationType',
@@ -1192,6 +1411,28 @@ class Class(Type):
 
 @dataclass(kw_only=True)
 class AttrOrParam(ExtendableME):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     subdivision_kind: Literal['NoSubDiv', 'SubDiv', 'ContSubDiv'] | None = field(
         default=None,
         metadata={'ili': {'display_name': 'NoSubDiv, SubDiv, ContSubDiv',
@@ -1238,6 +1479,28 @@ class AttrOrParam(ExtendableME):
 
 @dataclass(kw_only=True)
 class TypeRelatedType(DomainType):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.TypeRelatedType'
         topic = 'IlisMeta16.ModelData'
@@ -1247,6 +1510,28 @@ class TypeRelatedType(DomainType):
 
 @dataclass(kw_only=True)
 class MultiValue(TypeRelatedType):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     ordered: bool = field(
         metadata={'ili': {'alias': 'BOOLEAN',
                  'alias_kind': 'boolean',
@@ -1281,6 +1566,28 @@ class MultiValue(TypeRelatedType):
 
 @dataclass(kw_only=True)
 class ClassRelatedType(DomainType):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.ClassRelatedType'
         topic = 'IlisMeta16.ModelData'
@@ -1290,6 +1597,28 @@ class ClassRelatedType(DomainType):
 
 @dataclass(kw_only=True)
 class ReferenceType(ClassRelatedType):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     external: bool = field(
         metadata={'ili': {'alias': 'BOOLEAN',
                  'alias_kind': 'boolean',
@@ -1310,6 +1639,28 @@ class ReferenceType(ClassRelatedType):
 
 @dataclass(kw_only=True)
 class Role(ReferenceType):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     strongness: Literal['Assoc', 'Aggr', 'Comp'] = field(
         metadata={'ili': {'display_name': 'Assoc, Aggr, Comp',
                  'ili_type': 'EnumerationType',
@@ -1379,7 +1730,28 @@ class Role(ReferenceType):
 
 @dataclass(kw_only=True)
 class ExplicitAssocAccess(ExtendableME):
-    """Auto-generated dataclass."""
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.ExplicitAssocAccess'
         topic = 'IlisMeta16.ModelData'
@@ -1389,6 +1761,28 @@ class ExplicitAssocAccess(ExtendableME):
 
 @dataclass(kw_only=True)
 class DataUnit(ExtendableME):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     name: str = field(
         metadata={'ili': {'display_name': 'TEXT',
                  'ili_type': 'TextType',
@@ -1431,7 +1825,28 @@ class DataUnit(ExtendableME):
 
 @dataclass(kw_only=True)
 class Context(MetaElement):
-    """Auto-generated dataclass."""
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.Context'
         topic = 'IlisMeta16.ModelData'
@@ -1441,6 +1856,28 @@ class Context(MetaElement):
 
 @dataclass(kw_only=True)
 class Unit(ExtendableME):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     kind: Literal['BaseU', 'DerivedU', 'ComposedU'] = field(
         metadata={'ili': {'display_name': 'BaseU, DerivedU, ComposedU',
                  'ili_type': 'EnumerationType',
@@ -1473,6 +1910,28 @@ class Unit(ExtendableME):
 
 @dataclass(kw_only=True)
 class MetaBasketDef(ExtendableME):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     kind: Literal['SignB', 'RefSystemB'] = field(
         metadata={'ili': {'display_name': 'SignB, RefSystemB',
                  'ili_type': 'EnumerationType',
@@ -1491,6 +1950,28 @@ class MetaBasketDef(ExtendableME):
 
 @dataclass(kw_only=True)
 class MetaObjectDef(MetaElement):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     is_ref_system: bool = field(
         metadata={'ili': {'alias': 'BOOLEAN',
                  'alias_kind': 'boolean',
@@ -1511,7 +1992,28 @@ class MetaObjectDef(MetaElement):
 
 @dataclass(kw_only=True)
 class BooleanType(DomainType):
-    """Auto-generated dataclass."""
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.BooleanType'
         topic = 'IlisMeta16.ModelData'
@@ -1521,6 +2023,28 @@ class BooleanType(DomainType):
 
 @dataclass(kw_only=True)
 class TextType(DomainType):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     kind: Literal['MText', 'Text', 'Name', 'Uri'] = field(
         metadata={'ili': {'display_name': 'MText, Text, Name, Uri',
                  'ili_type': 'EnumerationType',
@@ -1553,6 +2077,28 @@ class TextType(DomainType):
 
 @dataclass(kw_only=True)
 class BlackboxType(DomainType):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     kind: Literal['Binary', 'Xml'] = field(
         metadata={'ili': {'display_name': 'Binary, Xml',
                  'ili_type': 'EnumerationType',
@@ -1571,6 +2117,28 @@ class BlackboxType(DomainType):
 
 @dataclass(kw_only=True)
 class NumType(DomainType):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     min: str | None = field(
         default=None,
         metadata={'ili': {'display_name': 'TEXT',
@@ -1628,6 +2196,28 @@ class NumType(DomainType):
 
 @dataclass(kw_only=True)
 class CoordType(DomainType):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     null_axis: int | None = field(
         default=None,
         metadata={'ili': {'alias': 'AxisInd',
@@ -1677,6 +2267,28 @@ class CoordType(DomainType):
 
 @dataclass(kw_only=True)
 class FormattedType(NumType):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     format: str = field(
         metadata={'ili': {'display_name': 'TEXT',
                  'ili_type': 'TextType',
@@ -1697,7 +2309,28 @@ class FormattedType(NumType):
 
 @dataclass(kw_only=True)
 class AnyOIDType(DomainType):
-    """Auto-generated dataclass."""
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.AnyOIDType'
         topic = 'IlisMeta16.ModelData'
@@ -1707,6 +2340,28 @@ class AnyOIDType(DomainType):
 
 @dataclass(kw_only=True)
 class FunctionDef(MetaElement):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     explanation: str | None = field(
         default=None,
         metadata={'ili': {'display_name': 'TEXT',
@@ -1728,6 +2383,28 @@ class FunctionDef(MetaElement):
 
 @dataclass(kw_only=True)
 class Argument(MetaElement):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     kind: Literal['Type', 'EnumVal', 'EnumTreeVal'] = field(
         metadata={'ili': {'display_name': 'Type, EnumVal, EnumTreeVal',
                  'ili_type': 'EnumerationType',
@@ -1746,7 +2423,28 @@ class Argument(MetaElement):
 
 @dataclass(kw_only=True)
 class ClassRefType(ClassRelatedType):
-    """Auto-generated dataclass."""
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.ClassRefType'
         topic = 'IlisMeta16.ModelData'
@@ -1756,6 +2454,28 @@ class ClassRefType(ClassRelatedType):
 
 @dataclass(kw_only=True)
 class ObjectType(ClassRelatedType):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     multiple: bool = field(
         metadata={'ili': {'alias': 'BOOLEAN',
                  'alias_kind': 'boolean',
@@ -1776,7 +2496,28 @@ class ObjectType(ClassRelatedType):
 
 @dataclass(kw_only=True)
 class AttributeRefType(DomainType):
-    """Auto-generated dataclass."""
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.AttributeRefType'
         topic = 'IlisMeta16.ModelData'
@@ -1786,6 +2527,28 @@ class AttributeRefType(DomainType):
 
 @dataclass(kw_only=True)
 class EnumType(DomainType):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     order: Literal['Unordered', 'Ordered', 'Circular'] = field(
         metadata={'ili': {'display_name': 'Unordered, Ordered, Circular',
                  'ili_type': 'EnumerationType',
@@ -1804,7 +2567,28 @@ class EnumType(DomainType):
 
 @dataclass(kw_only=True)
 class EnumNode(ExtendableME):
-    """Auto-generated dataclass."""
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.EnumNode'
         topic = 'IlisMeta16.ModelData'
@@ -1814,7 +2598,28 @@ class EnumNode(ExtendableME):
 
 @dataclass(kw_only=True)
 class EnumTreeValueType(DomainType):
-    """Auto-generated dataclass."""
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.EnumTreeValueType'
         topic = 'IlisMeta16.ModelData'
@@ -1824,7 +2629,28 @@ class EnumTreeValueType(DomainType):
 
 @dataclass(kw_only=True)
 class LineForm(MetaElement):
-    """Auto-generated dataclass."""
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     class Meta:
         ili_name = 'IlisMeta16.ModelData.LineForm'
         topic = 'IlisMeta16.ModelData'
@@ -1834,6 +2660,28 @@ class LineForm(MetaElement):
 
 @dataclass(kw_only=True)
 class LineType(DomainType):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     kind: Literal['Polyline', 'DirectedPolyline', 'Surface', 'Area'] = field(
         metadata={'ili': {'display_name': 'Polyline, DirectedPolyline, Surface, Area',
                  'ili_type': 'EnumerationType',
@@ -1876,6 +2724,28 @@ class LineType(DomainType):
 
 @dataclass(kw_only=True)
 class View(Class):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     formation_kind: Literal['Projection', 'Join', 'Union', 'Aggregation.All', 'Aggregation.Equal', 'Inspection.Normal', 'Inspection.Area'] = field(
         metadata={'ili': {'display_name': 'Projection, Join, Union, Aggregation.All, Aggregation.Equal, '
                                  'Inspection.Normal, Inspection.Area',
@@ -1941,6 +2811,28 @@ class View(Class):
 
 @dataclass(kw_only=True)
 class RenamedBaseView(ExtendableME):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     or_null: bool | None = field(
         default=None,
         metadata={'ili': {'alias': 'BOOLEAN',
@@ -1962,6 +2854,28 @@ class RenamedBaseView(ExtendableME):
 
 @dataclass(kw_only=True)
 class SimpleConstraint(Constraint):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     kind: Literal['MandC', 'LowPercC', 'HighPercC'] | None = field(
         default=None,
         metadata={'ili': {'display_name': 'MandC, LowPercC, HighPercC',
@@ -2006,6 +2920,28 @@ class SimpleConstraint(Constraint):
 
 @dataclass(kw_only=True)
 class ExistenceConstraint(Constraint):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     attr: PathOrInspFactor = field(
         metadata={'ili': {'alias': 'PathOrInspFactor',
                  'alias_kind': 'object',
@@ -2042,6 +2978,28 @@ class ExistenceConstraint(Constraint):
 
 @dataclass(kw_only=True)
 class UniqueConstraint(Constraint):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     where: tuple[Expression, ...] = field(
         default_factory=tuple,
         metadata={'ili': {'cardinality': {'max': 1, 'min': 0},
@@ -2089,6 +3047,28 @@ class UniqueConstraint(Constraint):
 
 @dataclass(kw_only=True)
 class SetConstraint(Constraint):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     where: tuple[Expression, ...] = field(
         default_factory=tuple,
         metadata={'ili': {'cardinality': {'max': 1, 'min': 0},
@@ -2139,6 +3119,28 @@ class SetConstraint(Constraint):
 
 @dataclass(kw_only=True)
 class Graphic(ExtendableME):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     where: Expression | None = field(
         default=None,
         metadata={'ili': {'alias': 'Expression',
@@ -2162,6 +3164,28 @@ class Graphic(ExtendableME):
 
 @dataclass(kw_only=True)
 class DrawingRule(ExtendableME):
+    tid: str | None = field(
+        default=None,
+        metadata={'ili': {'alias': 'IlisMeta16.MetaElemOID',
+                 'alias_kind': 'domain',
+                 'display_name': 'OID TEXT',
+                 'domain': 'IlisMeta16.MetaElemOID',
+                 'identifier': True,
+                 'identifier_category': 'oid',
+                 'identifier_kind': 'text',
+                 'ili_type': 'TextOIDType',
+                 'mandatory': True,
+                 'max_length': None,
+                 'model': 'IlisMeta16',
+                 'name': 'TID',
+                 'python_type': 'str',
+                 'topic': 'IlisMeta16.ModelData',
+                 'value_type': {'display_name': 'TEXT',
+                                'ili_type': 'TextType',
+                                'max_length': None,
+                                'normalized': True,
+                                'text_kind': 'TEXT'}}},
+    )
     rule: tuple[CondSignParamAssignment, ...] = field(
         default_factory=tuple,
         metadata={'ili': {'cardinality': {'max': None, 'min': 0},

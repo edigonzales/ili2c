@@ -24,6 +24,17 @@ def test_metaelement_metadata():
     assert info["cardinality"] == {"min": 0, "max": None}
 
 
+def test_metaelement_tid_field():
+    tid_field = MetaElement.__dataclass_fields__["tid"]
+    assert tid_field.type == "str | None"
+    assert tid_field.default is None
+    info = tid_field.metadata["ili"]
+    assert info["name"] == "TID"
+    assert info["identifier"] is True
+    assert info["identifier_category"] == "oid"
+    assert info["alias"] == "IlisMeta16.MetaElemOID"
+
+
 def test_unique_constraint_literals():
     kind_field = UniqueConstraint.__dataclass_fields__["kind"]
     assert kind_field.type == "Literal['GlobalU', 'BasketU', 'LocalU']"
@@ -42,6 +53,13 @@ def test_generate_model_level_tables_included():
     assert "class Address:" in module_text
     assert "class Road:" in module_text
     assert "'qualified_target': 'SimpleModel.Address'" in module_text
+
+
+def test_generate_model_level_default_tid():
+    module_text = generate_model_dataclasses(DATA_DIR / "simple.ili")
+    assert "tid: str | None" in module_text
+    assert "'alias': 'INTERLIS.ANYOID'" in module_text
+    assert "'identifier_kind': 'text'" in module_text
 
 
 def test_model_level_structure_topic_none():

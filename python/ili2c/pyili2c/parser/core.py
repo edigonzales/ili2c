@@ -587,9 +587,23 @@ class _ModelBuilder:
     def _build_topic(self, ctx) -> Topic:
         name = ctx.Name()[0].getText()
         topic = Topic(name)
+        topic_oid_text: Optional[str] = None
+        for basket, domain_text in self._iter_oid_domains(ctx):
+            oid_type = self._type_from_text(domain_text)
+            if basket:
+                topic.setBasketOIDType(oid_type)
+            else:
+                topic.setOIDType(oid_type)
+                topic_oid_text = domain_text
         for definition in ctx.definitions() or []:
             if definition.classDef():
                 table = self._build_table(definition.classDef(), kind="CLASS")
+                if (
+                    topic_oid_text
+                    and table.getOIDType() is None
+                    and table.isIdentifiable()
+                ):
+                    table.setOIDType(self._type_from_text(topic_oid_text))
                 topic.add_class(table)
             elif definition.structureDef():
                 table = self._build_table(definition.structureDef(), kind="STRUCTURE")
@@ -605,6 +619,10 @@ class _ModelBuilder:
         abstract = bool(ctx.ABSTRACT())
         identifiable = kind == "CLASS" and ctx.NO() is None
         table = Table(name=name, kind=kind, abstract=abstract, identifiable=identifiable)
+
+        oid_type = self._extract_oid_type(ctx)
+        if oid_type is not None:
+            table.setOIDType(oid_type)
 
         ref_ctx = None
         if hasattr(ctx, "classOrStructureRef"):
@@ -627,6 +645,55 @@ class _ModelBuilder:
                 constraint = self._build_constraint(constraint_ctx)
                 table.add_constraint(constraint)
         return table
+
+    def _extract_oid_type(self, ctx) -> Optional[Type]:
+        for basket, domain_text in self._iter_oid_domains(ctx):
+            if not basket:
+                return self._type_from_text(domain_text)
+        return None
+
+    def _iter_oid_domains(self, ctx) -> Iterable[tuple[bool, str]]:
+        children = list(ctx.getChildren()) if hasattr(ctx, "getChildren") else []
+        idx = 0
+        while idx < len(children):
+            child = children[idx]
+            if not isinstance(child, TerminalNodeImpl) or child.symbol.type != InterlisParserPy.OID:
+                idx += 1
+                continue
+            if idx > 0:
+                prev = children[idx - 1]
+                if isinstance(prev, TerminalNodeImpl) and prev.symbol.type == InterlisParserPy.NO:
+                    idx += 1
+                    continue
+            basket = False
+            if idx > 0:
+                prev = children[idx - 1]
+                if isinstance(prev, TerminalNodeImpl) and prev.symbol.type == InterlisParserPy.BASKET:
+                    basket = True
+            domain_text, next_idx = self._collect_oid_domain(children, idx)
+            if domain_text:
+                yield basket, domain_text
+            idx = next_idx
+
+    def _collect_oid_domain(self, children: List, start_idx: int) -> tuple[str, int]:
+        parts: List[str] = []
+        saw_as = False
+        idx = start_idx + 1
+        while idx < len(children):
+            node = children[idx]
+            if isinstance(node, TerminalNodeImpl):
+                token_type = node.symbol.type
+                if token_type == InterlisParserPy.SEMI:
+                    idx += 1
+                    break
+                if token_type == InterlisParserPy.AS:
+                    saw_as = True
+                    idx += 1
+                    continue
+            if saw_as:
+                parts.append(node.getText())
+            idx += 1
+        return "".join(parts).strip(), idx
 
     def _build_attribute(self, ctx) -> Attribute:
         attr_type_ctx = ctx.attrTypeDef()
