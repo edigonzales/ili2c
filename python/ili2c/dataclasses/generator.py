@@ -296,7 +296,9 @@ class DataclassGenerator:
             return None
         oid_type = table.getOIDType()
         if oid_type is None:
-            return None
+            if not table.isIdentifiable():
+                return None
+            oid_type = TypeAlias("INTERLIS.ANYOID")
         field_name = self._python_name("tid", used=used_names)
         type_hint, imports = self._type_expr_for_domain(oid_type, mandatory=False)
         domain_info = self._describe_domain(oid_type)

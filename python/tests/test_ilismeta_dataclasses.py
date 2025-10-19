@@ -55,6 +55,13 @@ def test_generate_model_level_tables_included():
     assert "'qualified_target': 'SimpleModel.Address'" in module_text
 
 
+def test_generate_model_level_default_tid():
+    module_text = generate_model_dataclasses(DATA_DIR / "simple.ili")
+    assert "tid: str | None" in module_text
+    assert "'alias': 'INTERLIS.ANYOID'" in module_text
+    assert "'identifier_kind': 'text'" in module_text
+
+
 def test_model_level_structure_topic_none():
     module_text = generate_model_dataclasses(DATA_DIR / "modelA.ili")
     assert "class StructA:" in module_text
