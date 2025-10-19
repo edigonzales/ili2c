@@ -74,6 +74,65 @@ print(field_info["max_length"])  # -> 1024
 Lists in INTERLIS map to tuples in the generated module.  Optional attributes
 are annotated with `| None` and default to `None` if not mandatory.
 
+### Integrating with SQLAlchemy
+
+The metadata embedded in each field can drive ORM mappings without hard-coding
+schema details.  The snippet below shows how to translate a generated dataclass
+into a SQLAlchemy table definition:
+
+```python
+from dataclasses import fields
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    Text,
+)
+
+from ili2c.dataclasses import ilismeta16
+
+metadata = MetaData()
+
+def _column_for(field):
+    info = field.metadata["ili"]
+
+    # Determine the best-fitting SQLAlchemy type.
+    if info.get("python_type") == "int":
+        column_type = Integer
+    elif info.get("alias_kind") == "boolean":
+        column_type = Boolean
+    else:
+        max_length = info.get("max_length")
+        column_type = String(max_length) if max_length else Text
+
+    kwargs = {"nullable": not info["mandatory"]}
+
+    if info.get("identifier_category") in {"oid", "tid"}:
+        kwargs["primary_key"] = True
+
+    return Column(field.name, column_type, **kwargs)
+
+meta_element_table = Table(
+    "meta_element",
+    metadata,
+    *(_column_for(field) for field in fields(ilismeta16.MetaElement)),
+)
+
+# Bind metadata to an engine, create tables, etc.
+```
+
+This approach automatically reflects INTERLIS constraints in the database
+layer:
+
+* Mandatory attributes become non-nullable columns.
+* Text length limits transfer to `String(length)` columns, while free-form
+  `TEXT` becomes `Text`.
+* Identifier aliases (such as TIDs or OIDs) are treated as primary keys so
+  transfer identifiers map cleanly to database identifiers.
+
 ### Running the regression tests
 
 The repository ships with snapshot-based tests that exercise the generator
